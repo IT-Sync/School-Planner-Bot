@@ -129,9 +129,14 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
     bot_user = await callback.bot.get_me()
     if bot_user.username:
         link = f"https://t.me/{bot_user.username}?start=share_{share.token}"
-        link_text = f"`{formatters.escape_markdown(link)}`"
+        link_text = (
+            f"[Открыть приглашение]({link})\n"
+            f"`{link}`"
+        )
     else:
-        link_text = "Ссылка станет доступна после установки username для бота."
+        link_text = (
+            "Чтобы получать кликабельные ссылки, задайте username для бота в BotFather."
+        )
 
     fallback = f"`/start share_{share.token}`"
     scope_label = "уроки и внеурочка" if scope == ShareScope.ALL else "только уроки"
@@ -139,7 +144,7 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
     await callback.message.answer(
         f"Скопируйте ссылку для импорта ({safe_scope}):\n"
         f"{link_text}\n"
-        f"или поделитесь командой {fallback}\n\n"
+        f"Или передайте команду {fallback}\n\n"
         "Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
     )
     await callback.answer("Ссылка создана")
