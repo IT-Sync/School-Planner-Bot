@@ -11,6 +11,11 @@ class DayItemType(str, Enum):
     EXTRA = "extra"
 
 
+class ShareScope(str, Enum):
+    LESSONS = "lessons"
+    ALL = "all"
+
+
 @dataclass(slots=True)
 class User:
     id: int
@@ -65,3 +70,18 @@ class DayView:
 
 
 WeekView = dict[int, DayView]
+
+
+@dataclass(slots=True)
+class ShareToken:
+    token: str
+    owner_id: int
+    scope: ShareScope
+    created_at: datetime
+
+
+@dataclass(slots=True)
+class ShareImportResult:
+    scope: ShareScope
+    lessons_days: int
+    extras_days: int

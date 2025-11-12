@@ -3,14 +3,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
+from aiogram.filters.command import CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
+from app.domain import ShareScope
 from app.services import ScheduleService
-from app.services.errors import InputValidationError
+from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
 from app.telegram import formatters, keyboards, states
 from app.utils import parsing
 
@@ -39,10 +41,49 @@ def _get_settings(event) -> Settings:
     return settings
 
 
-@router.message(Command("start"))
-async def cmd_start(message: Message) -> None:
+def _parse_share_scope(value: str) -> ShareScope:
+    return ShareScope.ALL if value == "all" else ShareScope.LESSONS
+
+
+def _format_days_stat(label: str, days: int) -> str:
+    return f"{label}: {days} дн."
+
+
+async def _handle_share_deep_link(message: Message, args: str) -> None:
+    if not args.startswith("share_"):
+        return
+    token = args.split("share_", 1)[1]
+    if not token:
+        await message.answer("Не удалось распознать приглашение.")
+        return
+
+    service = _get_service(message)
+    try:
+        result = await service.import_shared_schedule(message.from_user.id, token)  # type: ignore[arg-type]
+    except ShareLinkNotFoundError:
+        await message.answer("Приглашение недействительно или устарело.")
+        return
+    except ShareImportError as exc:
+        await message.answer(str(exc))
+        return
+
+    scope_label = "уроки и внеурочка" if result.scope == ShareScope.ALL else "только уроки"
+    lines = [
+        f"Импортировано расписание ({scope_label}).",
+        _format_days_stat("Уроки", result.lessons_days),
+    ]
+    if result.scope == ShareScope.ALL:
+        lines.append(_format_days_stat("Внеурочка", result.extras_days))
+    await message.answer("\n".join(lines))
+
+
+@router.message(CommandStart())
+async def cmd_start(message: Message, command: CommandObject | None = None) -> None:
     service = _get_service(message)
     await service.ensure_user(message.from_user.id)  # type: ignore[arg-type]
+    if command and command.args:
+        await _handle_share_deep_link(message, command.args)
+
     await message.answer(
         "Привет! Я помогу вести расписание уроков и кружков.\n"
         "Команды:\n"
@@ -50,6 +91,7 @@ async def cmd_start(message: Message) -> None:
         "/set_extras — заполнить внеурочку\n"
         "/today — посмотреть расписание на сегодня\n"
         "/week — показать расписание на неделю\n"
+        "/share — поделиться расписанием\n"
         "/help — подсказка по форматам ввода",
     )
 
@@ -61,8 +103,44 @@ async def cmd_help(message: Message) -> None:
         "Примеры:\n"
         "08:30-09:15 Математика 204 (Иванова)\n"
         "16:00-17:00 Робототехника к.12\n"
-        "Разделяйте дополнительные поля с помощью символов | или ; если нужно указать локацию/комментарий.",
+        "Разделяйте дополнительные поля с помощью символов | или ; если нужно указать локацию/комментарий.\n\n"
+        "Команда /share создаёт приглашение для импорта расписания другим пользователем.",
     )
+
+
+@router.message(Command("share"))
+async def cmd_share(message: Message) -> None:
+    await message.answer(
+        "Выберите, чем поделиться:",
+        reply_markup=keyboards.share_scope_keyboard(),
+    )
+
+
+@router.callback_query(F.data.startswith("share:scope:"))
+async def share_scope_chosen(callback: CallbackQuery) -> None:
+    service = _get_service(callback)
+    data = callback.data or ""
+    scope_value = data.split(":")[-1]
+    scope = _parse_share_scope(scope_value)
+    share = await service.create_share_link(callback.from_user.id, scope)  # type: ignore[arg-type]
+
+    bot_user = await callback.bot.get_me()
+    if bot_user.username:
+        link = f"https://t.me/{bot_user.username}?start=share_{share.token}"
+    else:
+        link = f"/start share_{share.token}"
+    scope_label = "уроки и внеурочка" if scope == ShareScope.ALL else "только уроки"
+    await callback.message.answer(
+        f"Скопируйте ссылку для импорта ({scope_label}):\n{link}\n\n"
+        "Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
+    )
+    await callback.answer("Ссылка создана")
+
+
+@router.callback_query(F.data == "share:cancel")
+async def share_cancel(callback: CallbackQuery) -> None:
+    await callback.message.answer("Действие отменено.")
+    await callback.answer()
 
 
 @router.message(Command("today"))

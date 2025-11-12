@@ -37,3 +37,13 @@ CREATE INDEX IF NOT EXISTS idx_schedule_user_day_start
 
 CREATE INDEX IF NOT EXISTS idx_extras_user_day_start
     ON extras (user_id, weekday, start_time);
+
+CREATE TABLE IF NOT EXISTS share_tokens (
+    token TEXT PRIMARY KEY,
+    owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scope TEXT NOT NULL CHECK (scope IN ('all', 'lessons')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_share_tokens_owner
+    ON share_tokens (owner_id, created_at);

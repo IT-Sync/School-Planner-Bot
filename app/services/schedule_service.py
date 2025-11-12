@@ -1,15 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import date, datetime, time as time_cls, timedelta
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
-from app.domain import DayItem, DayItemType, DayView, Extra, Lesson
+from app.domain import (
+    DayItem,
+    DayItemType,
+    DayView,
+    Extra,
+    Lesson,
+    ShareImportResult,
+    ShareScope,
+)
 from app.dto import ExtraInput, LessonInput
-from app.repositories import ExtrasRepository, ScheduleRepository, UserRepository
-from app.services.errors import InputValidationError
+from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
+from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
 from app.utils import parsing
 
 
@@ -20,11 +27,13 @@ class ScheduleService:
         user_repo: UserRepository,
         schedule_repo: ScheduleRepository,
         extras_repo: ExtrasRepository,
+        share_repo: ShareTokenRepository,
     ) -> None:
         self.settings = settings
         self.user_repo = user_repo
         self.schedule_repo = schedule_repo
         self.extras_repo = extras_repo
+        self.share_repo = share_repo
 
     async def ensure_user(self, user_id: int) -> None:
         await self.user_repo.get_or_create(user_id)
@@ -41,7 +50,7 @@ class ScheduleService:
         await self.schedule_repo.replace_day(
             user_id=user_id,
             weekday=weekday,
-            lessons=[asdict(lesson) for lesson in lessons],
+            lessons=[self._lesson_to_payload(lesson) for lesson in lessons],
         )
         return await self._build_day_view(user_id, weekday)
 
@@ -57,7 +66,7 @@ class ScheduleService:
         await self.extras_repo.replace_day(
             user_id=user_id,
             weekday=weekday,
-            extras=[asdict(extra) for extra in extras],
+            extras=[self._extra_to_payload(extra) for extra in extras],
         )
         return await self._build_day_view(user_id, weekday)
 
@@ -88,6 +97,26 @@ class ScheduleService:
             weekday = day.isoweekday()
             week[weekday] = await self._build_day_view(user_id, weekday)
         return week
+
+    async def create_share_link(self, user_id: int, scope: ShareScope):
+        await self.user_repo.get_or_create(user_id)
+        return await self.share_repo.create(user_id, scope)
+
+    async def import_shared_schedule(self, target_user_id: int, token: str) -> ShareImportResult:
+        share = await self.share_repo.get(token)
+        if not share:
+            raise ShareLinkNotFoundError()
+        if share.owner_id == target_user_id:
+            raise ShareImportError("Нельзя импортировать своё расписание.")
+
+        await self.user_repo.get_or_create(target_user_id)
+        lessons_days = await self._copy_lessons(share.owner_id, target_user_id)
+
+        extras_days = 0
+        if share.scope == ShareScope.ALL:
+            extras_days = await self._copy_extras(share.owner_id, target_user_id)
+
+        return ShareImportResult(scope=share.scope, lessons_days=lessons_days, extras_days=extras_days)
 
     async def _build_day_view(self, user_id: int, weekday: int) -> DayView:
         lessons = await self.schedule_repo.list_by_user_and_day(user_id, weekday)
@@ -147,3 +176,49 @@ class ScheduleService:
                         f"{current.end_time.strftime('%H:%M')}",
                     ],
                 )
+
+    @staticmethod
+    def _lesson_to_payload(lesson: LessonInput | Lesson) -> dict:
+        return {
+            "subject": lesson.subject,
+            "start_time": lesson.start_time,
+            "end_time": lesson.end_time,
+            "location": getattr(lesson, "location", None),
+            "teacher": getattr(lesson, "teacher", None),
+        }
+
+    @staticmethod
+    def _extra_to_payload(extra: ExtraInput | Extra) -> dict:
+        return {
+            "name": extra.name,
+            "start_time": extra.start_time,
+            "end_time": extra.end_time,
+            "location": getattr(extra, "location", None),
+            "notes": getattr(extra, "notes", None),
+        }
+
+    async def _copy_lessons(self, source_user_id: int, target_user_id: int) -> int:
+        days_with_data = 0
+        for weekday in range(1, 8):
+            lessons = await self.schedule_repo.list_by_user_and_day(source_user_id, weekday)
+            await self.schedule_repo.replace_day(
+                user_id=target_user_id,
+                weekday=weekday,
+                lessons=[self._lesson_to_payload(lesson) for lesson in lessons],
+            )
+            if lessons:
+                days_with_data += 1
+        return days_with_data
+
+    async def _copy_extras(self, source_user_id: int, target_user_id: int) -> int:
+        days_with_data = 0
+        for weekday in range(1, 8):
+            extras = await self.extras_repo.list_by_user_and_day(source_user_id, weekday)
+            await self.extras_repo.replace_day(
+                user_id=target_user_id,
+                weekday=weekday,
+                extras=[self._extra_to_payload(extra) for extra in extras],
+            )
+            if extras:
+                days_with_data += 1
+        return days_with_data

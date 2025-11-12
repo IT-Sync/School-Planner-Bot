@@ -19,3 +19,12 @@ def confirmation_keyboard(prefix: str) -> InlineKeyboardMarkup:
     builder.button(text="Отмена", callback_data=f"{prefix}:cancel")
     builder.adjust(2)
     return builder.as_markup()
+
+
+def share_scope_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Уроки + внеурочка", callback_data="share:scope:all")
+    builder.button(text="Только уроки", callback_data="share:scope:lessons")
+    builder.button(text="Отмена", callback_data="share:cancel")
+    builder.adjust(1)
+    return builder.as_markup()
