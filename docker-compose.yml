@@ -11,7 +11,7 @@ services:
     ports:
       - "5544:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /opt/School-Planner-Bot/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U planner -d planner"]
       interval: 10s

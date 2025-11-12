@@ -46,7 +46,7 @@ def _parse_share_scope(value: str) -> ShareScope:
 
 
 def _format_days_stat(label: str, days: int) -> str:
-    return f"{label}: {days} дн."
+    return f"- {formatters.escape_markdown(label)}: *{days}* дн."
 
 
 async def _handle_share_deep_link(message: Message, args: str) -> None:
@@ -68,8 +68,9 @@ async def _handle_share_deep_link(message: Message, args: str) -> None:
         return
 
     scope_label = "уроки и внеурочка" if result.scope == ShareScope.ALL else "только уроки"
+    safe_scope = formatters.escape_markdown(scope_label)
     lines = [
-        f"Импортировано расписание ({scope_label}).",
+        f"*Импортировано расписание* ({safe_scope}).",
         _format_days_stat("Уроки", result.lessons_days),
     ]
     if result.scope == ShareScope.ALL:
@@ -85,14 +86,15 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
         await _handle_share_deep_link(message, command.args)
 
     await message.answer(
-        "Привет! Я помогу вести расписание уроков и кружков.\n"
-        "Команды:\n"
-        "/set_lessons — заполнить уроки дня\n"
-        "/set_extras — заполнить внеурочку\n"
-        "/today — посмотреть расписание на сегодня\n"
-        "/week — показать расписание на неделю\n"
-        "/share — поделиться расписанием\n"
-        "/help — подсказка по форматам ввода",
+        "👋 *Привет! Я — School Planner Bot.*\n"
+        "Помогаю собирать уроки и внеурочку в одном расписании, показывать день или неделю и делиться ими с семьёй.\n\n"
+        "*Что я умею*\n"
+        "- /set_lessons — заполнить уроки выбранного дня\n"
+        "- /set_extras — добавить кружки и секции\n"
+        "- /today — показать расписание на сегодня в твоём часовом поясе\n"
+        "- /week — вывести всю неделю\n"
+        "- /share — создать ссылку-приглашение, чтобы друзья скопировали твоё расписание\n"
+        "- /help — напомнить формат ввода",
     )
 
 
@@ -127,11 +129,17 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
     bot_user = await callback.bot.get_me()
     if bot_user.username:
         link = f"https://t.me/{bot_user.username}?start=share_{share.token}"
+        link_text = f"`{formatters.escape_markdown(link)}`"
     else:
-        link = f"/start share_{share.token}"
+        link_text = "Ссылка станет доступна после установки username для бота."
+
+    fallback = f"`/start share_{share.token}`"
     scope_label = "уроки и внеурочка" if scope == ShareScope.ALL else "только уроки"
+    safe_scope = formatters.escape_markdown(scope_label)
     await callback.message.answer(
-        f"Скопируйте ссылку для импорта ({scope_label}):\n{link}\n\n"
+        f"Скопируйте ссылку для импорта ({safe_scope}):\n"
+        f"{link_text}\n"
+        f"или поделитесь командой {fallback}\n\n"
         "Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
     )
     await callback.answer("Ссылка создана")

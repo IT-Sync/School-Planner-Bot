@@ -7,6 +7,7 @@ from app.domain import DayItem, DayItemType, DayView
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+MARKDOWN_SPECIAL = "_*[]()~`>#+=|{}"
 
 
 def weekday_label(weekday: int) -> str:
@@ -16,9 +17,9 @@ def weekday_label(weekday: int) -> str:
 
 
 def render_day_view(view: DayView) -> str:
-    lines = [f"{weekday_label(view.weekday)}"]
+    lines = [f"*{escape_markdown(weekday_label(view.weekday))}*"]
     if not view.items:
-        lines.append("— записей нет")
+        lines.append("_записей нет_")
         return "\n".join(lines)
 
     for item in view.items:
@@ -37,25 +38,28 @@ def render_week_view(views: dict[int, DayView]) -> str:
 
 
 def render_preview_lessons(entries: Iterable[LessonInput], weekday: int) -> str:
-    lines = [f"Предпросмотр уроков ({weekday_label(weekday)}):"]
+    lines = [f"*Предпросмотр уроков ({escape_markdown(weekday_label(weekday))}):*"]
     for entry in entries:
-        lines.append(_format_slot(entry.start_time, entry.end_time, entry.subject, entry.location, entry.teacher))
+        body = f"{escape_markdown(entry.subject)}"
+        lines.append(_format_slot(entry.start_time, entry.end_time, body, entry.location, entry.teacher))
     return "\n".join(lines)
 
 
 def render_preview_extras(entries: Iterable[ExtraInput], weekday: int) -> str:
-    lines = [f"Предпросмотр внеурочки ({weekday_label(weekday)}):"]
+    lines = [f"*Предпросмотр внеурочки ({escape_markdown(weekday_label(weekday))}):*"]
     for entry in entries:
-        lines.append(_format_slot(entry.start_time, entry.end_time, entry.name, entry.location, entry.notes))
+        body = f"{escape_markdown(entry.name)}"
+        lines.append(_format_slot(entry.start_time, entry.end_time, body, entry.location, entry.notes))
     return "\n".join(lines)
 
 
 def _format_day_item(item: DayItem) -> str:
-    label_prefix = "[Урок]" if item.type == DayItemType.LESSON else "[Кружок]"
+    label_prefix = "*Урок*" if item.type == DayItemType.LESSON else "*Кружок*"
+    body = f"{label_prefix}: {escape_markdown(item.label)}"
     return _format_slot(
         item.start_time,
         item.end_time,
-        f"{label_prefix} {item.label}",
+        body,
         item.location,
         item.subtitle,
     )
@@ -68,9 +72,20 @@ def _format_slot(
     location: str | None,
     subtitle: str | None,
 ) -> str:
-    parts = [f"{start.strftime('%H:%M')}–{end.strftime('%H:%M')} {label.strip()}"]
+    time_span = f"`{start.strftime('%H:%M')}`–`{end.strftime('%H:%M')}`"
+    parts = [f"- {time_span} {label.strip()}"]
     if location:
-        parts.append(f"({location})")
+        parts.append(f" ({escape_markdown(location)})")
     if subtitle:
-        parts.append(f"— {subtitle}")
+        parts.append(f" — {escape_markdown(subtitle)}")
     return " ".join(parts)
+
+
+def escape_markdown(value: str) -> str:
+    escaped = []
+    for char in value:
+        if char in MARKDOWN_SPECIAL:
+            escaped.append(f"\\{char}")
+        else:
+            escaped.append(char)
+    return "".join(escaped)
