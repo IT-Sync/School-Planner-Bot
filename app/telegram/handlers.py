@@ -170,7 +170,7 @@ async def cmd_week(message: Message) -> None:
     await message.answer(formatters.render_week_view(views))
 
 
-@router.message(Command("set_lessons"))
+@router.message(Command(commands=["set_lessons", "setlessons"]))
 async def cmd_set_lessons(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(states.LessonsState.choosing_day)
@@ -250,7 +250,7 @@ async def lessons_confirm_cancel(callback: CallbackQuery, state: FSMContext) -> 
     await callback.answer()
 
 
-@router.message(Command("set_extras"))
+@router.message(Command(commands=["set_extras", "setextras"]))
 async def cmd_set_extras(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(states.ExtrasState.choosing_day)
