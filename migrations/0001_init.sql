@@ -42,8 +42,15 @@ CREATE TABLE IF NOT EXISTS share_tokens (
     token TEXT PRIMARY KEY,
     owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     scope TEXT NOT NULL CHECK (scope IN ('all', 'lessons')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '1 day'
 );
 
 CREATE INDEX IF NOT EXISTS idx_share_tokens_owner
     ON share_tokens (owner_id, created_at);
+
+ALTER TABLE share_tokens
+    ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '1 day';
+
+CREATE INDEX IF NOT EXISTS idx_share_tokens_expires_at
+    ON share_tokens (expires_at);

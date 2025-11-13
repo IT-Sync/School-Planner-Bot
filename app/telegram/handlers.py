@@ -128,10 +128,13 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
 
     bot_user = await callback.bot.get_me()
     if bot_user.username:
-        link = f"https://t.me/{bot_user.username}?start=share_{share.token}"
+        browser_link = f"https://t.me/{bot_user.username}?start=share_{share.token}"
+        deep_link = f"tg://resolve?domain={bot_user.username}&start=share_{share.token}"
         link_text = (
-            f"[Открыть приглашение]({link})\n"
-            f"`{link}`"
+            f"[Открыть приглашение]({browser_link})\n"
+            f"`{browser_link}`\n"
+            "Альтернатива для открытия сразу в приложении:\n"
+            f"`{deep_link}`"
         )
     else:
         link_text = (
@@ -145,7 +148,7 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
         f"Скопируйте ссылку для импорта ({safe_scope}):\n"
         f"{link_text}\n"
         f"Или передайте команду {fallback}\n\n"
-        "Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
+        "Ссылка активна в течение 1 дня. Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
     )
     await callback.answer("Ссылка создана")
 

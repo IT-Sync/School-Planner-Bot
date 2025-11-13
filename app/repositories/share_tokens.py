@@ -12,6 +12,7 @@ def _row_to_share_token(row) -> ShareToken:
         owner_id=row["owner_id"],
         scope=ShareScope(row["scope"]),
         created_at=row["created_at"],
+        expires_at=row["expires_at"],
     )
 
 
@@ -21,9 +22,9 @@ class ShareTokenRepository(BaseRepository):
         async with self.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO share_tokens (token, owner_id, scope)
-                VALUES ($1, $2, $3)
-                RETURNING token, owner_id, scope, created_at
+                INSERT INTO share_tokens (token, owner_id, scope, expires_at)
+                VALUES ($1, $2, $3, now() + interval '1 day')
+                RETURNING token, owner_id, scope, created_at, expires_at
                 """,
                 token,
                 owner_id,
@@ -35,9 +36,9 @@ class ShareTokenRepository(BaseRepository):
         async with self.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT token, owner_id, scope, created_at
+                SELECT token, owner_id, scope, created_at, expires_at
                 FROM share_tokens
-                WHERE token = $1
+                WHERE token = $1 AND expires_at > now()
                 """,
                 token,
             )

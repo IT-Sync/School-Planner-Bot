@@ -78,6 +78,7 @@ class ShareToken:
     owner_id: int
     scope: ShareScope
     created_at: datetime
+    expires_at: datetime
 
 
 @dataclass(slots=True)
