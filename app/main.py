@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 
 from app.config import get_settings
 from app.core.database import Database
@@ -24,6 +25,12 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
     )
     dp = Dispatcher(storage=MemoryStorage())
+    await bot.set_my_commands(
+        [
+            BotCommand(command="today", description="Расписание на сегодня"),
+            BotCommand(command="week", description="Расписание на неделю"),
+        ]
+    )
 
     database = Database(settings)
     await database.connect()
