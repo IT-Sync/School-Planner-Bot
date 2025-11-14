@@ -95,6 +95,7 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
         "- /week — вывести всю неделю\n"
         "- /share — создать ссылку-приглашение, чтобы друзья скопировали твоё расписание\n"
         "- /help — напомнить формат ввода",
+        reply_markup=keyboards.main_menu_keyboard(),
     )
 
 
@@ -159,8 +160,7 @@ async def share_cancel(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.message(Command("today"))
-async def cmd_today(message: Message) -> None:
+async def _send_today(message: Message) -> None:
     service = _get_service(message)
     settings = _get_settings(message)
     now = datetime.now(tz=ZoneInfo(settings.default_tz))
@@ -168,14 +168,33 @@ async def cmd_today(message: Message) -> None:
     await message.answer(formatters.render_day_view(view))
 
 
-@router.message(Command("week"))
-async def cmd_week(message: Message) -> None:
+@router.message(Command("today"))
+async def cmd_today(message: Message) -> None:
+    await _send_today(message)
+
+
+@router.message(F.text == keyboards.MENU_TODAY_LABEL)
+async def menu_today(message: Message) -> None:
+    await _send_today(message)
+
+
+async def _send_week(message: Message) -> None:
     service = _get_service(message)
     settings = _get_settings(message)
     now = datetime.now(tz=ZoneInfo(settings.default_tz))
     start_of_week = now - timedelta(days=now.weekday())
     views = await service.get_week_view(message.from_user.id, start_of_week.date())  # type: ignore[arg-type]
     await message.answer(formatters.render_week_view(views))
+
+
+@router.message(Command("week"))
+async def cmd_week(message: Message) -> None:
+    await _send_week(message)
+
+
+@router.message(F.text == keyboards.MENU_WEEK_LABEL)
+async def menu_week(message: Message) -> None:
+    await _send_week(message)
 
 
 @router.message(Command(commands=["set_lessons", "setlessons"]))
