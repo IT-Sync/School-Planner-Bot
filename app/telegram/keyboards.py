@@ -33,6 +33,14 @@ def share_scope_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def share_import_keyboard(token: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Импортировать", callback_data=f"share:preview:import:{token}")
+    builder.button(text="Отмена", callback_data="share:preview:cancel")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[

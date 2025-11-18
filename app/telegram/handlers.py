@@ -104,6 +104,18 @@ def _format_days_stat(label: str, days: int) -> str:
     return f"- {formatters.escape_markdown(label)}: *{days}* дн."
 
 
+def _share_import_result_text(result) -> str:
+    scope_label = "уроки и внеурочка" if result.scope == ShareScope.ALL else "только уроки"
+    safe_scope = formatters.escape_markdown(scope_label)
+    lines = [
+        f"*Импортировано расписание* ({safe_scope}).",
+        _format_days_stat("Уроки", result.lessons_days),
+    ]
+    if result.scope == ShareScope.ALL:
+        lines.append(_format_days_stat("Внеурочка", result.extras_days))
+    return "\n".join(lines)
+
+
 async def _handle_share_deep_link(message: Message, args: str) -> None:
     if not args.startswith("share_"):
         return
@@ -114,23 +126,17 @@ async def _handle_share_deep_link(message: Message, args: str) -> None:
 
     service = _get_service(message)
     try:
-        result = await service.import_shared_schedule(message.from_user.id, token)  # type: ignore[arg-type]
+        share = await service.resolve_share_token(token)
     except ShareLinkNotFoundError:
         await message.answer("Приглашение недействительно или устарело.")
         return
-    except ShareImportError as exc:
-        await message.answer(str(exc))
-        return
 
-    scope_label = "уроки и внеурочка" if result.scope == ShareScope.ALL else "только уроки"
-    safe_scope = formatters.escape_markdown(scope_label)
-    lines = [
-        f"*Импортировано расписание* ({safe_scope}).",
-        _format_days_stat("Уроки", result.lessons_days),
-    ]
-    if result.scope == ShareScope.ALL:
-        lines.append(_format_days_stat("Внеурочка", result.extras_days))
-    await message.answer("\n".join(lines))
+    preview = await service.get_share_week_preview(share.owner_id, share.scope)
+    preview_text = formatters.render_share_preview(share.scope, preview)
+    await message.answer(
+        preview_text + "\n\n_Нажмите «Импортировать», чтобы заменить своё расписание._",
+        reply_markup=keyboards.share_import_keyboard(share.token),
+    )
 
 
 @router.message(CommandStart())
@@ -226,6 +232,36 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
 async def share_cancel(callback: CallbackQuery) -> None:
     await callback.message.answer("Действие отменено.")
     await callback.answer()
+
+
+@router.callback_query(F.data == "share:preview:cancel")
+async def share_preview_cancel(callback: CallbackQuery) -> None:
+    if callback.message:
+        await callback.message.edit_reply_markup()
+        await callback.message.answer("Импорт отменён.")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("share:preview:import:"))
+async def share_preview_import(callback: CallbackQuery) -> None:
+    data = callback.data or ""
+    token = data.split("share:preview:import:", 1)[-1]
+    service = _get_service(callback)
+    try:
+        result = await service.import_shared_schedule(callback.from_user.id, token)  # type: ignore[arg-type]
+    except ShareLinkNotFoundError:
+        await callback.message.answer("Приглашение недействительно или устарело.")
+        await callback.answer()
+        return
+    except ShareImportError as exc:
+        await callback.message.answer(str(exc))
+        await callback.answer()
+        return
+
+    if callback.message:
+        await callback.message.edit_reply_markup()
+        await callback.message.answer(_share_import_result_text(result))
+    await callback.answer("Импортировано")
 
 
 async def _send_today(message: Message) -> None:

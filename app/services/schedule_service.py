@@ -5,15 +5,7 @@ from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
-from app.domain import (
-    DayItem,
-    DayItemType,
-    DayView,
-    Extra,
-    Lesson,
-    ShareImportResult,
-    ShareScope,
-)
+from app.domain import DayItem, DayItemType, DayView, Extra, Lesson, ShareImportResult, ShareScope, ShareToken
 from app.dto import ExtraInput, LessonInput
 from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
 from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
@@ -103,9 +95,7 @@ class ScheduleService:
         return await self.share_repo.create(user_id, scope)
 
     async def import_shared_schedule(self, target_user_id: int, token: str) -> ShareImportResult:
-        share = await self.share_repo.get(token)
-        if not share:
-            raise ShareLinkNotFoundError()
+        share = await self.resolve_share_token(token)
         if share.owner_id == target_user_id:
             raise ShareImportError("Нельзя импортировать своё расписание.")
 
@@ -118,9 +108,38 @@ class ScheduleService:
 
         return ShareImportResult(scope=share.scope, lessons_days=lessons_days, extras_days=extras_days)
 
-    async def _build_day_view(self, user_id: int, weekday: int) -> DayView:
-        lessons = await self.schedule_repo.list_by_user_and_day(user_id, weekday)
-        extras = await self.extras_repo.list_by_user_and_day(user_id, weekday)
+    async def resolve_share_token(self, token: str) -> ShareToken:
+        share = await self.share_repo.get(token)
+        if not share:
+            raise ShareLinkNotFoundError()
+        return share
+
+    async def get_share_week_preview(self, owner_id: int, scope: ShareScope) -> dict[int, DayView]:
+        include_extras = scope == ShareScope.ALL
+        week: dict[int, DayView] = {}
+        for weekday in range(1, 8):
+            week[weekday] = await self._build_day_view(
+                owner_id,
+                weekday,
+                include_lessons=True,
+                include_extras=include_extras,
+            )
+        return week
+
+    async def _build_day_view(
+        self,
+        user_id: int,
+        weekday: int,
+        *,
+        include_lessons: bool = True,
+        include_extras: bool = True,
+    ) -> DayView:
+        lessons: list[Lesson] = []
+        extras: list[Extra] = []
+        if include_lessons:
+            lessons = await self.schedule_repo.list_by_user_and_day(user_id, weekday)
+        if include_extras:
+            extras = await self.extras_repo.list_by_user_and_day(user_id, weekday)
         items = self._merge_items(lessons, extras)
         return DayView(weekday=weekday, items=items)
 

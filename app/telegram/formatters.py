@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import time
 from typing import Iterable
 
-from app.domain import DayItem, DayItemType, DayView, UsageStats
+from app.domain import DayItem, DayItemType, DayView, ShareScope, UsageStats
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -64,6 +64,18 @@ def render_usage_stats(stats: UsageStats) -> str:
         f"- Записей внеурочки: *{stats.extras_total}*",
         f"- Ссылок /share за 7 дней: *{stats.share_links_week}*",
     ]
+    return "\n".join(lines)
+
+
+def render_share_preview(scope: ShareScope, week_views: dict[int, DayView]) -> str:
+    scope_label = "уроки и внеурочка" if scope == ShareScope.ALL else "только уроки"
+    lines = [
+        "*Приглашение на импорт расписания*",
+        f"Тип данных: *{escape_markdown(scope_label)}*",
+        "",
+    ]
+    content = render_week_view(week_views)
+    lines.append(content or "_расписание пусто_")
     return "\n".join(lines)
 
 
