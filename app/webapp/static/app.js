@@ -39,6 +39,16 @@ function buildApiUrl(path) {
   return url.toString();
 }
 
+function normalizeTime(value) {
+  if (!value) return "";
+  if (value.length === 5 && value.includes(":")) return value;
+  if (value.includes(":")) {
+    const [hours, minutes] = value.split(":");
+    return `${hours.padStart(2, "0")}:${(minutes ?? "00").padStart(2, "0")}`;
+  }
+  return value;
+}
+
 function fetchJSON(path, options = {}) {
   const url = buildApiUrl(path);
   const headers = {
@@ -112,7 +122,7 @@ function renderDayView({ entries, date, weekday, containerId, dateLabelId, weekd
     const card = document.createElement("div");
     card.className = "entry-card";
     card.innerHTML = `
-      <div class="time">${entry.start_time} – ${entry.end_time}</div>
+      <div class="time">${normalizeTime(entry.start_time)} – ${normalizeTime(entry.end_time)}</div>
       <div class="title">${entry.label}</div>
       <div class="meta">
         <span class="badge ${entry.type}">${entry.type === "lesson" ? "Урок" : "Кружок"}</span>
@@ -157,7 +167,7 @@ function renderEditEntries() {
     const card = document.createElement("div");
     card.className = "entry-card";
     card.innerHTML = `
-      <div class="time">${entry.start_time} – ${entry.end_time}</div>
+      <div class="time">${normalizeTime(entry.start_time)} – ${normalizeTime(entry.end_time)}</div>
       <div class="title">${entry.label}</div>
       <div class="meta">
         <span class="badge ${entry.type}">${entry.type === "lesson" ? "Урок" : "Кружок"}</span>
@@ -219,21 +229,23 @@ function openModal(entry, weekdayOverride) {
   form.reset();
   const targetWeekday = weekdayOverride ?? state.editWeekday ?? state.todayWeekday;
   form.dataset.weekday = targetWeekday;
+  const startDefault = entry ? normalizeTime(entry.start_time) : "08:00";
+  const endDefault = entry ? normalizeTime(entry.end_time) : "08:45";
   if (entry) {
     form.type.value = entry.type;
     form.label.value = entry.label;
     form.location.value = entry.location ?? "";
     form.subtitle.value = entry.subtitle ?? "";
-    setPickerValue("start-picker", entry.start_time);
-    setPickerValue("end-picker", entry.end_time);
-    form.start_time.value = entry.start_time;
-    form.end_time.value = entry.end_time;
   } else {
-    setPickerValue("start-picker", "08:00");
-    setPickerValue("end-picker", "08:45");
-    form.start_time.value = "08:00";
-    form.end_time.value = "08:45";
+    form.type.value = "lesson";
+    form.label.value = "";
+    form.location.value = "";
+    form.subtitle.value = "";
   }
+  setPickerValue("start-picker", startDefault);
+  setPickerValue("end-picker", endDefault);
+  form.start_time.value = startDefault;
+  form.end_time.value = endDefault;
 }
 
 function closeModal() {
