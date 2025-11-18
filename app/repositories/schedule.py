@@ -100,3 +100,28 @@ class ScheduleRepository(BaseRepository):
                 weekday,
             )
         return int(result or 0)
+
+    async def update_subject(self, lesson_id: int, user_id: int, subject: str) -> bool:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE schedule
+                SET subject = $3,
+                    updated_at = now()
+                WHERE id = $1 AND user_id = $2
+                RETURNING id
+                """,
+                lesson_id,
+                user_id,
+                subject,
+            )
+        return row is not None
+
+    async def delete_entry(self, lesson_id: int, user_id: int) -> bool:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                "DELETE FROM schedule WHERE id = $1 AND user_id = $2 RETURNING id",
+                lesson_id,
+                user_id,
+            )
+        return row is not None

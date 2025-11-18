@@ -12,7 +12,7 @@ from aiogram.types import CallbackQuery, Message
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
-from app.domain import ShareScope
+from app.domain import DayItemType, ShareScope
 from app.services import AdminService, ScheduleService
 from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
 from app.telegram import formatters, keyboards, states
@@ -116,6 +116,40 @@ def _share_import_result_text(result) -> str:
     return "\n".join(lines)
 
 
+def _message_target(event: Message | CallbackQuery) -> Message:
+    if isinstance(event, CallbackQuery):
+        if not event.message:
+            raise RuntimeError("Callback without message")
+        return event.message
+    return event
+
+
+async def _show_edit_entries(event: Message | CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    weekday = data.get("weekday")
+    if not weekday:
+        await state.set_state(states.EditState.choosing_day)
+        await _message_target(event).answer(
+            "Выберите день для редактирования:",
+            reply_markup=keyboards.weekday_keyboard("edit"),
+        )
+        return
+    service = _get_service(event)
+    entries = await service.get_editable_entries(event.from_user.id, int(weekday))  # type: ignore[arg-type]
+    if not entries:
+        await state.set_state(states.EditState.choosing_day)
+        await _message_target(event).answer(
+            "На этот день больше нет записей. Выберите другой:",
+            reply_markup=keyboards.weekday_keyboard("edit"),
+        )
+        return
+    await state.set_state(states.EditState.choosing_entry)
+    await _message_target(event).answer(
+        formatters.render_edit_entries(int(weekday), entries),
+        reply_markup=keyboards.edit_entries_keyboard(entries),
+    )
+
+
 async def _handle_share_deep_link(message: Message, args: str) -> bool:
     if not args.startswith("share_"):
         return False
@@ -180,6 +214,16 @@ async def cmd_share(message: Message) -> None:
     await message.answer(
         "Выберите, чем поделиться:",
         reply_markup=keyboards.share_scope_keyboard(),
+    )
+
+
+@router.message(Command("edit"))
+async def cmd_edit(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(states.EditState.choosing_day)
+    await message.answer(
+        "Режим редактирования.\nВыберите день:",
+        reply_markup=keyboards.weekday_keyboard("edit"),
     )
 
 
@@ -265,6 +309,120 @@ async def share_preview_import(callback: CallbackQuery) -> None:
         await callback.message.edit_reply_markup()
         await callback.message.answer(_share_import_result_text(result))
     await callback.answer("Импортировано")
+
+
+@router.message(states.EditState.waiting_for_label)
+async def edit_receive_label(message: Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
+    if not text:
+        await message.answer("Название не может быть пустым. Попробуйте снова или введите Отмена.")
+        return
+    if text.lower() == "отмена":
+        await state.set_state(states.EditState.choosing_entry)
+        await message.answer("Изменение отменено.")
+        await _show_edit_entries(message, state)
+        return
+    data = await state.get_data()
+    entry_type_value = data.get("entry_type")
+    entry_id = data.get("entry_id")
+    if entry_type_value is None or entry_id is None:
+        await state.set_state(states.EditState.choosing_day)
+        await message.answer(
+            "Не удалось определить запись. Выберите день ещё раз:",
+            reply_markup=keyboards.weekday_keyboard("edit"),
+        )
+        return
+    entry_type = DayItemType(entry_type_value)
+    service = _get_service(message)
+    try:
+        updated = await service.update_entry_label(message.from_user.id, entry_type, int(entry_id), text)  # type: ignore[arg-type]
+    except InputValidationError as exc:
+        await message.answer("\n".join(exc.errors))
+        return
+    if updated:
+        await message.answer("Название обновлено.")
+    else:
+        await message.answer("Не удалось обновить запись. Возможно, она была удалена.")
+    await _show_edit_entries(message, state)
+
+
+@router.callback_query(states.EditState.choosing_day, F.data.startswith("edit:day:"))
+async def edit_choose_day(callback: CallbackQuery, state: FSMContext) -> None:
+    weekday = int(callback.data.split(":")[-1])
+    service = _get_service(callback)
+    entries = await service.get_editable_entries(callback.from_user.id, weekday)  # type: ignore[arg-type]
+    await state.update_data(weekday=weekday)
+    if not entries:
+        await callback.message.answer(
+            "На этот день пока нет записей. Выберите другой:",
+            reply_markup=keyboards.weekday_keyboard("edit"),
+        )
+        await callback.answer()
+        return
+    await state.set_state(states.EditState.choosing_entry)
+    await callback.message.answer(
+        formatters.render_edit_entries(weekday, entries),
+        reply_markup=keyboards.edit_entries_keyboard(entries),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "edit:back")
+async def edit_back(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(states.EditState.choosing_day)
+    await callback.message.answer(
+        "Выберите день:",
+        reply_markup=keyboards.weekday_keyboard("edit"),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "edit:entries")
+async def edit_entries_back(callback: CallbackQuery, state: FSMContext) -> None:
+    await _show_edit_entries(callback, state)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "edit:cancel")
+async def edit_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.message.answer("Режим редактирования завершён.")
+    await callback.answer()
+
+
+@router.callback_query(states.EditState.choosing_entry, F.data.startswith("edit:item:"))
+async def edit_entry_selected(callback: CallbackQuery, state: FSMContext) -> None:
+    _, _, type_value, entry_id = callback.data.split(":", 3)
+    entry_type = DayItemType(type_value)
+    await state.update_data(entry_type=entry_type.value, entry_id=int(entry_id))
+    await state.set_state(states.EditState.choosing_action)
+    await callback.message.answer(
+        "Что сделать с этой записью?",
+        reply_markup=keyboards.edit_entry_actions_keyboard(entry_type, int(entry_id)),
+    )
+    await callback.answer()
+
+
+@router.callback_query(states.EditState.choosing_action, F.data.startswith("edit:action:"))
+async def edit_entry_action(callback: CallbackQuery, state: FSMContext) -> None:
+    _, _, action, type_value, entry_id = callback.data.split(":", 4)
+    entry_type = DayItemType(type_value)
+    entry_id_int = int(entry_id)
+    await state.update_data(entry_type=entry_type.value, entry_id=entry_id_int)
+    service = _get_service(callback)
+    if action == "rename":
+        await state.set_state(states.EditState.waiting_for_label)
+        await callback.message.answer("Введите новое название (или напишите Отмена):")
+        await callback.answer()
+        return
+    if action == "delete":
+        deleted = await service.delete_entry(callback.from_user.id, entry_type, entry_id_int)  # type: ignore[arg-type]
+        if deleted:
+            await callback.message.answer("Запись удалена.")
+        else:
+            await callback.message.answer("Не удалось удалить запись. Возможно, она уже изменена.")
+        await _show_edit_entries(callback, state)
+    await callback.answer()
 
 
 async def _send_today(message: Message) -> None:

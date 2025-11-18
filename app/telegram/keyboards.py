@@ -1,6 +1,9 @@
+from typing import Sequence
+
 from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from app.domain import DayItemType, EditableEntry
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 MENU_TODAY_LABEL = "Расписание на сегодня"
 MENU_TOMORROW_LABEL = "Расписание на завтра"
@@ -37,6 +40,35 @@ def share_import_keyboard(token: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="Импортировать", callback_data=f"share:preview:import:{token}")
     builder.button(text="Отмена", callback_data="share:preview:cancel")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def edit_entries_keyboard(entries: Sequence[EditableEntry]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for idx, entry in enumerate(entries, start=1):
+        entry_type = entry.type.value
+        label = entry.label
+        button_text = f"{idx}. {label[:40]}"
+        builder.button(text=button_text, callback_data=f"edit:item:{entry_type}:{entry.id}")
+    builder.button(text="Назад к дням", callback_data="edit:back")
+    builder.button(text="Отмена", callback_data="edit:cancel")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def edit_entry_actions_keyboard(entry_type: DayItemType, entry_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Изменить название",
+        callback_data=f"edit:action:rename:{entry_type.value}:{entry_id}",
+    )
+    builder.button(
+        text="Удалить",
+        callback_data=f"edit:action:delete:{entry_type.value}:{entry_id}",
+    )
+    builder.button(text="Назад", callback_data="edit:entries")
+    builder.button(text="Отмена", callback_data="edit:cancel")
     builder.adjust(1)
     return builder.as_markup()
 

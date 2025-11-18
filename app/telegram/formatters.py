@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import time
 from typing import Iterable
 
-from app.domain import DayItem, DayItemType, DayView, ShareScope, UsageStats
+from app.domain import DayItem, DayItemType, DayView, EditableEntry, ShareScope, UsageStats
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -76,6 +76,23 @@ def render_share_preview(scope: ShareScope, week_views: dict[int, DayView]) -> s
     ]
     content = render_week_view(week_views)
     lines.append(content or "_расписание пусто_")
+    return "\n".join(lines)
+
+
+def render_edit_entries(weekday: int, entries: list[EditableEntry]) -> str:
+    lines = [
+        f"*{escape_markdown(weekday_label(weekday))}: выберите запись для изменения*",
+    ]
+    if not entries:
+        lines.append("_записей нет_")
+        return "\n".join(lines)
+    for idx, entry in enumerate(entries, start=1):
+        label = "Урок" if entry.type == DayItemType.LESSON else "Кружок"
+        span = f"`{entry.start_time.strftime('%H:%M')}`–`{entry.end_time.strftime('%H:%M')}`"
+        lines.append(
+            f"{idx}. {span} *[{label}]* {escape_markdown(entry.label)}",
+        )
+    lines.append("\nНажмите на кнопку ниже, чтобы выбрать запись.")
     return "\n".join(lines)
 
 

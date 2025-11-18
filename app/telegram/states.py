@@ -11,3 +11,10 @@ class ExtrasState(StatesGroup):
     choosing_day = State()
     waiting_for_text = State()
     confirming = State()
+
+
+class EditState(StatesGroup):
+    choosing_day = State()
+    choosing_entry = State()
+    choosing_action = State()
+    waiting_for_label = State()

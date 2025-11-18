@@ -5,7 +5,7 @@ from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
-from app.domain import DayItem, DayItemType, DayView, Extra, Lesson, ShareImportResult, ShareScope, ShareToken
+from app.domain import EditableEntry, DayItem, DayItemType, DayView, Extra, Lesson, ShareImportResult, ShareScope, ShareToken
 from app.dto import ExtraInput, LessonInput
 from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
 from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
@@ -125,6 +125,53 @@ class ScheduleService:
                 include_extras=include_extras,
             )
         return week
+
+    async def get_editable_entries(self, user_id: int, weekday: int) -> list[EditableEntry]:
+        await self.user_repo.get_or_create(user_id)
+        self._validate_weekday(weekday)
+        lessons = await self.schedule_repo.list_by_user_and_day(user_id, weekday)
+        extras = await self.extras_repo.list_by_user_and_day(user_id, weekday)
+        entries: list[EditableEntry] = [
+            EditableEntry(
+                id=lesson.id,
+                type=DayItemType.LESSON,
+                label=lesson.subject,
+                start_time=lesson.start_time,
+                end_time=lesson.end_time,
+            )
+            for lesson in lessons
+        ]
+        entries.extend(
+            EditableEntry(
+                id=extra.id,
+                type=DayItemType.EXTRA,
+                label=extra.name,
+                start_time=extra.start_time,
+                end_time=extra.end_time,
+            )
+            for extra in extras
+        )
+        entries.sort(key=lambda entry: entry.start_time)
+        return entries
+
+    async def update_entry_label(
+        self,
+        user_id: int,
+        entry_type: DayItemType,
+        entry_id: int,
+        new_label: str,
+    ) -> bool:
+        label = new_label.strip()
+        if not label:
+            raise InputValidationError(["Название не может быть пустым."])
+        if entry_type == DayItemType.LESSON:
+            return await self.schedule_repo.update_subject(entry_id, user_id, label)
+        return await self.extras_repo.update_name(entry_id, user_id, label)
+
+    async def delete_entry(self, user_id: int, entry_type: DayItemType, entry_id: int) -> bool:
+        if entry_type == DayItemType.LESSON:
+            return await self.schedule_repo.delete_entry(entry_id, user_id)
+        return await self.extras_repo.delete_entry(entry_id, user_id)
 
     async def _build_day_view(
         self,

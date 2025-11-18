@@ -100,3 +100,28 @@ class ExtrasRepository(BaseRepository):
                 weekday,
             )
         return int(result or 0)
+
+    async def update_name(self, extra_id: int, user_id: int, name: str) -> bool:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE extras
+                SET name = $3,
+                    updated_at = now()
+                WHERE id = $1 AND user_id = $2
+                RETURNING id
+                """,
+                extra_id,
+                user_id,
+                name,
+            )
+        return row is not None
+
+    async def delete_entry(self, extra_id: int, user_id: int) -> bool:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                "DELETE FROM extras WHERE id = $1 AND user_id = $2 RETURNING id",
+                extra_id,
+                user_id,
+            )
+        return row is not None

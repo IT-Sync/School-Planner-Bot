@@ -97,3 +97,12 @@ class UsageStats:
     lessons_total: int
     extras_total: int
     share_links_week: int
+
+
+@dataclass(slots=True)
+class EditableEntry:
+    id: int
+    type: DayItemType
+    label: str
+    start_time: time
+    end_time: time
