@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     health_port: int = Field(alias="HEALTH_PORT", default=8088)
     admin_ids: tuple[int, ...] = Field(alias="ADMIN_IDS", default=())
     webapp_url: str = Field(alias="WEBAPP_URL", default="")
+    webapp_dev_user_id: int | None = Field(alias="WEBAPP_DEV_USER_ID", default=None)
 
     @field_validator("admin_ids", mode="before")
     @classmethod

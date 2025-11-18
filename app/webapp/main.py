@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import logging
+
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +25,7 @@ from app.webapp.schemas import (
 )
 
 settings = get_settings()
+logger = logging.getLogger("school_planner.webapp")
 database = Database(settings)
 _schedule_service: ScheduleService | None = None
 
@@ -55,11 +58,19 @@ def get_schedule_service() -> ScheduleService:
     return _schedule_service
 
 
-def get_current_user(init_data: str = Header(..., alias="X-Telegram-Init-Data")) -> WebAppUser:
-    try:
-        return verify_init_data(init_data, settings.bot_token)
-    except WebAppAuthError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+def get_current_user(init_data: str | None = Header(None, alias="X-Telegram-Init-Data")) -> WebAppUser:
+    if init_data:
+        logger.debug("Received initData length=%s", len(init_data))
+        try:
+            return verify_init_data(init_data, settings.bot_token)
+        except WebAppAuthError as exc:
+            logger.warning("WebApp auth failed: %s", exc)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    if settings.webapp_dev_user_id:
+        logger.info("WebApp dev fallback user_id=%s", settings.webapp_dev_user_id)
+        return WebAppUser(id=settings.webapp_dev_user_id, first_name="Dev")
+    logger.warning("Missing initData and dev fallback disabled")
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing initData")
 
 
 def _entry_to_schedule_entry(entry: EditableEntry) -> ScheduleEntry:
