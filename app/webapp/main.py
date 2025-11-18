@@ -79,7 +79,11 @@ def get_current_user(
             logger.warning("WebApp auth failed: %s", exc)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     if settings.webapp_dev_user_id:
-        logger.info("WebApp dev fallback user_id=%s", settings.webapp_dev_user_id)
+        logger.info(
+            "WebApp dev fallback user_id=%s (no initData; path=%s)",
+            settings.webapp_dev_user_id,
+            request.url.path,
+        )
         return WebAppUser(id=settings.webapp_dev_user_id, first_name="Dev")
     logger.warning("Missing initData and dev fallback disabled")
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing initData")
