@@ -116,20 +116,20 @@ def _share_import_result_text(result) -> str:
     return "\n".join(lines)
 
 
-async def _handle_share_deep_link(message: Message, args: str) -> None:
+async def _handle_share_deep_link(message: Message, args: str) -> bool:
     if not args.startswith("share_"):
-        return
+        return False
     token = args.split("share_", 1)[1]
     if not token:
         await message.answer("Не удалось распознать приглашение.")
-        return
+        return True
 
     service = _get_service(message)
     try:
         share = await service.resolve_share_token(token)
     except ShareLinkNotFoundError:
         await message.answer("Приглашение недействительно или устарело.")
-        return
+        return True
 
     preview = await service.get_share_week_preview(share.owner_id, share.scope)
     preview_text = formatters.render_share_preview(share.scope, preview)
@@ -137,6 +137,7 @@ async def _handle_share_deep_link(message: Message, args: str) -> None:
         preview_text + "\n\n_Нажмите «Импортировать», чтобы заменить своё расписание._",
         reply_markup=keyboards.share_import_keyboard(share.token),
     )
+    return True
 
 
 @router.message(CommandStart())
@@ -144,7 +145,9 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
     service = _get_service(message)
     await service.ensure_user(message.from_user.id)  # type: ignore[arg-type]
     if command and command.args:
-        await _handle_share_deep_link(message, command.args)
+        handled = await _handle_share_deep_link(message, command.args)
+        if handled:
+            return
 
     await message.answer(
         "👋 *Привет! Я — School Planner Bot.*\n"
@@ -223,7 +226,7 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
         f"Скопируйте ссылку для импорта ({safe_scope}):\n"
         f"{link_text}\n"
         f"Или передайте команду {fallback}\n\n"
-        "Ссылка активна в течение 1 дня. Приглашённый пользователь перейдёт по ссылке и отправит /start, чтобы импортировать данные.",
+        "Ссылка активна в течение 1 дня. После перехода бот сразу покажет расписание и предложит подтвердить импорт.",
     )
     await callback.answer("Ссылка создана")
 
