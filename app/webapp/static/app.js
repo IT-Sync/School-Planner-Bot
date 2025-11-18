@@ -226,17 +226,20 @@ function openModal(entry, weekdayOverride) {
   const modal = document.getElementById("modal");
   modal.classList.remove("hidden");
   const form = document.getElementById("entry-form");
+  const title = document.getElementById("modal-title");
   form.reset();
   const targetWeekday = weekdayOverride ?? state.editWeekday ?? state.todayWeekday;
   form.dataset.weekday = targetWeekday;
   const startDefault = entry ? normalizeTime(entry.start_time) : "08:00";
   const endDefault = entry ? normalizeTime(entry.end_time) : "08:45";
   if (entry) {
+    title.textContent = "Редактирование записи";
     form.type.value = entry.type;
     form.label.value = entry.label;
     form.location.value = entry.location ?? "";
     form.subtitle.value = entry.subtitle ?? "";
   } else {
+    title.textContent = "Новое занятие";
     form.type.value = "lesson";
     form.label.value = "";
     form.location.value = "";
