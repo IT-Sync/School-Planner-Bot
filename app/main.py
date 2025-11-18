@@ -12,8 +12,8 @@ from app.config import get_settings
 from app.core.database import Database
 from app.core.logging import configure_logging
 from app.health import start_health_server
-from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
-from app.services import ScheduleService
+from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, StatsRepository, UserRepository
+from app.services import AdminService, ScheduleService
 from app.telegram import handlers
 
 
@@ -39,10 +39,12 @@ async def main() -> None:
     schedule_repo = ScheduleRepository(database.pool)
     extras_repo = ExtrasRepository(database.pool)
     share_repo = ShareTokenRepository(database.pool)
+    stats_repo = StatsRepository(database.pool)
     user_repo = UserRepository(database.pool)
     schedule_service = ScheduleService(settings, user_repo, schedule_repo, extras_repo, share_repo)
+    admin_service = AdminService(stats_repo)
 
-    handlers.configure_dependencies(schedule_service, settings)
+    handlers.configure_dependencies(schedule_service, settings, admin_service)
 
     dp.include_router(handlers.router)
 

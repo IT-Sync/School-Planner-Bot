@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import time
 from typing import Iterable
 
-from app.domain import DayItem, DayItemType, DayView
+from app.domain import DayItem, DayItemType, DayView, UsageStats
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -50,6 +50,20 @@ def render_preview_extras(entries: Iterable[ExtraInput], weekday: int) -> str:
     for entry in entries:
         body = f"{escape_markdown(entry.name)}"
         lines.append(_format_slot(entry.start_time, entry.end_time, body, entry.location, entry.notes))
+    return "\n".join(lines)
+
+
+def render_usage_stats(stats: UsageStats) -> str:
+    lines = [
+        "*Статистика использования*",
+        f"- Всего пользователей: *{stats.total_users}*",
+        f"- Новых за 24 часа: *{stats.new_users_day}*",
+        f"- Новых за 7 дней: *{stats.new_users_week}*",
+        f"- Активных пользователей: *{stats.active_users}*",
+        f"- Записей уроков: *{stats.lessons_total}*",
+        f"- Записей внеурочки: *{stats.extras_total}*",
+        f"- Ссылок /share за 7 дней: *{stats.share_links_week}*",
+    ]
     return "\n".join(lines)
 
 

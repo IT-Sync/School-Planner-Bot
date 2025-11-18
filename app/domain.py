@@ -86,3 +86,14 @@ class ShareImportResult:
     scope: ShareScope
     lessons_days: int
     extras_days: int
+
+
+@dataclass(slots=True)
+class UsageStats:
+    total_users: int
+    new_users_day: int
+    new_users_week: int
+    active_users: int
+    lessons_total: int
+    extras_total: int
+    share_links_week: int

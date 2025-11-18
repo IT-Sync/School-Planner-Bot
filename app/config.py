@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     max_lessons_per_day: int = Field(alias="MAX_LESSONS_PER_DAY", default=12)
     max_extras_per_day: int = Field(alias="MAX_EXTRAS_PER_DAY", default=6)
     health_port: int = Field(alias="HEALTH_PORT", default=8088)
+    admin_ids: tuple[int, ...] = Field(alias="ADMIN_IDS", default=())
+
+    @field_validator("admin_ids", mode="before")
+    @classmethod
+    def _parse_admin_ids(cls, value):
+        if value in (None, "", ()):
+            return ()
+        if isinstance(value, str):
+            normalized = value.replace(";", ",")
+            parts = [part.strip() for part in normalized.split(",")]
+            return tuple(int(part) for part in parts if part)
+        if isinstance(value, (list, tuple, set)):
+            return tuple(int(item) for item in value)
+        raise ValueError("ADMIN_IDS must be a comma-separated list of integers")
 
 
 @lru_cache(maxsize=1)

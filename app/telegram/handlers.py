@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from app.config import Settings
 from app.domain import ShareScope
-from app.services import ScheduleService
+from app.services import AdminService, ScheduleService
 from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
 from app.telegram import formatters, keyboards, states
 from app.utils import parsing
@@ -49,13 +49,15 @@ class CommandMenuReminderMiddleware(BaseMiddleware):
 
 router.message.middleware(CommandMenuReminderMiddleware())
 _schedule_service: ScheduleService | None = None
+_admin_service: AdminService | None = None
 _settings: Settings | None = None
 
 
-def configure_dependencies(service: ScheduleService, settings: Settings) -> None:
-    global _schedule_service, _settings
+def configure_dependencies(service: ScheduleService, settings: Settings, admin_service: AdminService) -> None:
+    global _schedule_service, _settings, _admin_service
     _schedule_service = service
     _settings = settings
+    _admin_service = admin_service
 
 
 def _get_service(event) -> ScheduleService:
@@ -70,6 +72,22 @@ def _get_settings(event) -> Settings:
     if settings is None:
         raise RuntimeError("Settings are not configured")
     return settings
+
+
+def _get_admin_service(event) -> AdminService:
+    service = _admin_service
+    if service is None:
+        raise RuntimeError("AdminService is not configured")
+    return service
+
+
+def _is_admin(user_id: int | None) -> bool:
+    if user_id is None:
+        return False
+    settings = _settings
+    if not settings:
+        return False
+    return user_id in settings.admin_ids
 
 
 def _parse_share_scope(value: str) -> ShareScope:
@@ -147,6 +165,19 @@ async def cmd_share(message: Message) -> None:
     await message.answer(
         "Выберите, чем поделиться:",
         reply_markup=keyboards.share_scope_keyboard(),
+    )
+
+
+@router.message(Command("admin_stats"))
+async def cmd_admin_stats(message: Message) -> None:
+    if not _is_admin(message.from_user.id if message.from_user else None):  # type: ignore[arg-type]
+        await message.answer("Эта команда доступна только администраторам.")
+        return
+    service = _get_admin_service(message)
+    stats = await service.get_usage_stats()
+    await message.answer(
+        formatters.render_usage_stats(stats),
+        reply_markup=keyboards.main_menu_keyboard(),
     )
 
 
