@@ -38,6 +38,8 @@ class Settings(BaseSettings):
             normalized = value.replace(";", ",")
             parts = [part.strip() for part in normalized.split(",")]
             return tuple(int(part) for part in parts if part)
+        if isinstance(value, int):
+            return (value,)
         if isinstance(value, (list, tuple, set)):
             return tuple(int(item) for item in value)
         raise ValueError("ADMIN_IDS must be a comma-separated list of integers")
