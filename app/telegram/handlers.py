@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from aiogram import F, Router
+from typing import Any, Awaitable, Callable
+
+from aiogram import BaseMiddleware, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.filters.command import CommandObject
 from aiogram.fsm.context import FSMContext
@@ -17,6 +19,35 @@ from app.telegram import formatters, keyboards, states
 from app.utils import parsing
 
 router = Router()
+
+
+def _menu_buttons_text() -> str:
+    labels = [
+        keyboards.MENU_TODAY_LABEL,
+        keyboards.MENU_TOMORROW_LABEL,
+        keyboards.MENU_WEEK_LABEL,
+    ]
+    return "Список кнопок меню:\n" + "\n".join(f"- {label}" for label in labels)
+
+
+class CommandMenuReminderMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[Message, dict[str, Any]], Awaitable[Any]],
+        event: Message,
+        data: dict[str, Any],
+    ) -> Any:
+        if isinstance(event, Message):
+            text = (event.text or "").strip()
+            if text.startswith("/") and event.chat.type == "private":
+                await event.answer(
+                    _menu_buttons_text(),
+                    reply_markup=keyboards.main_menu_keyboard(),
+                )
+        return await handler(event, data)
+
+
+router.message.middleware(CommandMenuReminderMiddleware())
 _schedule_service: ScheduleService | None = None
 _settings: Settings | None = None
 
