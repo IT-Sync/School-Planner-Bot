@@ -4,7 +4,7 @@ from pathlib import Path
 
 import logging
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -58,9 +58,21 @@ def get_schedule_service() -> ScheduleService:
     return _schedule_service
 
 
-def get_current_user(init_data: str | None = Header(None, alias="X-Telegram-Init-Data")) -> WebAppUser:
+def get_current_user(
+    request: Request,
+    init_data_header: str | None = Header(None, alias="X-Telegram-Init-Data"),
+) -> WebAppUser:
+    init_data = (
+        init_data_header
+        or request.query_params.get("tg_web_app_data")
+        or request.query_params.get("tgWebAppData")
+    )
     if init_data:
-        logger.debug("Received initData length=%s", len(init_data))
+        logger.debug(
+            "Received initData length=%s via %s",
+            len(init_data),
+            "header" if init_data_header else "query",
+        )
         try:
             return verify_init_data(init_data, settings.bot_token)
         except WebAppAuthError as exc:

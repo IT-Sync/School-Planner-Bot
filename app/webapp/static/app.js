@@ -4,8 +4,11 @@ if (telegram) {
   telegram.expand();
 }
 
-const initData = telegram?.initData || "";
-const initDataUnsafe = telegram?.initDataUnsafe;
+const urlParams = new URLSearchParams(window.location.search);
+const initDataFromQuery =
+  urlParams.get("tgWebAppData") || urlParams.get("tg_web_app_data") || "";
+const initData = telegram?.initData || initDataFromQuery || "";
+const initDataUnsafe = telegram?.initDataUnsafe || {};
 const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const state = {
@@ -15,7 +18,16 @@ const state = {
   editingEntry: null,
 };
 
-function fetchJSON(url, options = {}) {
+function buildApiUrl(path) {
+  const url = new URL(path, window.location.origin);
+  if (initData) {
+    url.searchParams.set("tg_web_app_data", initData);
+  }
+  return url.toString();
+}
+
+function fetchJSON(path, options = {}) {
+  const url = buildApiUrl(path);
   const headers = {
     "Content-Type": "application/json",
     "X-Telegram-Init-Data": initData,
