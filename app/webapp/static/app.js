@@ -1,5 +1,11 @@
-const initData = window.Telegram?.WebApp?.initData || "";
-const initDataUnsafe = window.Telegram?.WebApp?.initDataUnsafe;
+const telegram = window.Telegram?.WebApp;
+if (telegram) {
+  telegram.ready();
+  telegram.expand();
+}
+
+const initData = telegram?.initData || "";
+const initDataUnsafe = telegram?.initDataUnsafe;
 const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const state = {
@@ -15,6 +21,9 @@ function fetchJSON(url, options = {}) {
     "X-Telegram-Init-Data": initData,
     ...(options.headers || {}),
   };
+  if (!initData) {
+    console.warn("Missing Telegram initData; requests will fail in production.");
+  }
   return fetch(url, { ...options, headers }).then(async (response) => {
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
@@ -254,6 +263,13 @@ async function bootstrap() {
   setupModal();
   setupListeners();
   renderAccountInfo();
+  if (!initData) {
+    const banner = document.createElement("div");
+    banner.className = "card danger";
+    banner.textContent =
+      "initData отсутствует. Откройте WebApp через кнопку бота или задайте WEBAPP_DEV_USER_ID.";
+    document.getElementById("app").prepend(banner);
+  }
   await loadDay();
 }
 
