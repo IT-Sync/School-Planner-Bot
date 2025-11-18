@@ -88,6 +88,12 @@ body {
   margin: 6px 0;
 }
 
+.entry-card .subtitle {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -151,6 +157,11 @@ body {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.05);
   margin-bottom: 16px;
+}
+
+.card.danger {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fecaca;
 }
 
 label {
@@ -232,4 +243,36 @@ select {
 
 .scroll-picker button.active {
   background: rgba(79, 70, 229, 0.25);
+}
+
+.weekday-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.weekday-picker button {
+  padding: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.weekday-picker button.active {
+  background: rgba(79, 70, 229, 0.35);
+  border-color: rgba(79, 70, 229, 0.8);
+}
+
+.week-row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.empty {
+  opacity: 0.6;
+  margin: 8px 0;
 }

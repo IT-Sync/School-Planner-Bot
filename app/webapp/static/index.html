@@ -9,11 +9,11 @@
   <body>
     <div id="app">
       <header class="app-header">
-        <h1>School Planner</h1>
         <nav class="tabs">
           <button data-tab="today" class="tab-button active">Сегодня</button>
+          <button data-tab="tomorrow" class="tab-button">Завтра</button>
           <button data-tab="week" class="tab-button">Неделя</button>
-          <button data-tab="settings" class="tab-button">Настройки</button>
+          <button data-tab="edit" class="tab-button">Редактирование</button>
         </nav>
       </header>
       <main>
@@ -23,35 +23,28 @@
               <div id="selected-date" class="date-label"></div>
               <div id="selected-weekday" class="weekday-label"></div>
             </div>
-            <button id="edit-day" class="primary">Редактировать</button>
           </div>
           <div id="day-entries" class="entries"></div>
-          <button id="add-entry" class="secondary">Добавить</button>
+        </section>
+        <section id="tomorrow-view" class="view">
+          <div class="day-header">
+            <div>
+              <div id="tomorrow-date" class="date-label"></div>
+              <div id="tomorrow-weekday" class="weekday-label"></div>
+            </div>
+          </div>
+          <div id="tomorrow-entries" class="entries"></div>
         </section>
         <section id="week-view" class="view">
           <div id="week-grid" class="week-grid"></div>
         </section>
-        <section id="settings-view" class="view">
-          <h2>Настройки</h2>
+        <section id="edit-view" class="view">
           <div class="card">
-            <label>
-              Режим отображения
-              <select id="display-mode">
-                <option value="combined">Объединённый список</option>
-                <option value="split">Отдельно уроки/внеурочка</option>
-              </select>
-            </label>
-            <label>
-              Цветовая схема
-              <select id="theme">
-                <option value="system">Авто</option>
-                <option value="light">Светлая</option>
-                <option value="dark">Тёмная</option>
-              </select>
-            </label>
-            <button id="reset-schedule" class="danger">Сбросить расписание</button>
+            <p>Выберите день недели:</p>
+            <div id="edit-weekdays" class="weekday-picker"></div>
           </div>
-          <div class="card" id="account-info"></div>
+          <div class="entries" id="edit-entries"></div>
+          <button id="add-entry" class="primary">Добавить запись</button>
         </section>
       </main>
     </div>
