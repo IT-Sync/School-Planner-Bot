@@ -39,7 +39,7 @@ class CommandMenuReminderMiddleware(BaseMiddleware):
     ) -> Any:
         if isinstance(event, Message):
             text = (event.text or "").strip()
-            if text.startswith("/") and event.chat.type == "private":
+            if text.startswith("/") and event.chat.type == "private" and not _should_skip_menu_prompt(text):
                 await event.answer(
                     _menu_buttons_text(),
                     reply_markup=keyboards.main_menu_keyboard(),
@@ -88,6 +88,12 @@ def _is_admin(user_id: int | None) -> bool:
     if not settings:
         return False
     return user_id in settings.admin_ids
+
+
+def _should_skip_menu_prompt(text: str) -> bool:
+    command = text.split()[0]
+    base = command.lstrip("/").split("@", 1)[0].lower()
+    return base == "admin_stats"
 
 
 def _parse_share_scope(value: str) -> ShareScope:
