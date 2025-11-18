@@ -43,6 +43,11 @@ def _get_settings(event) -> Settings:
     return settings
 
 
+def _main_menu(event) -> ReplyKeyboardMarkup:
+    settings = _get_settings(event)
+    return keyboards.main_menu_keyboard(settings.webapp_url or None)
+
+
 def _get_admin_service(event) -> AdminService:
     service = _admin_service
     if service is None:
@@ -156,7 +161,7 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
         "- /week — вывести всю неделю\n"
         "- /share — создать ссылку-приглашение, чтобы друзья скопировали твоё расписание\n"
         "- /help — напомнить формат ввода",
-        reply_markup=keyboards.main_menu_keyboard(),
+        reply_markup=_main_menu(message),
     )
 
 
@@ -199,7 +204,7 @@ async def cmd_admin_stats(message: Message) -> None:
     stats = await service.get_usage_stats()
     await message.answer(
         formatters.render_usage_stats(stats),
-        reply_markup=keyboards.main_menu_keyboard(),
+        reply_markup=_main_menu(message),
     )
 
 

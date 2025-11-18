@@ -10,6 +10,7 @@ __pycache__/
 # Environments
 .env
 plan.md
+tz_webapp_updated.md
 .env.*
 !.env.example
 .venv/

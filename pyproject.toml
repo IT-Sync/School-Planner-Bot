@@ -8,11 +8,13 @@ readme = "README.md"
 dependencies = [
     "aiogram>=3.6,<4.0",
     "asyncpg>=0.29",
+    "fastapi>=0.111",
     "pydantic>=2.7",
     "pydantic-settings>=2.2",
     "python-dateutil>=2.9",
     "python-dotenv>=1.0",
     "SQLAlchemy>=2.0",
+    "uvicorn>=0.30",
     "uvloop>=0.19 ; sys_platform != 'win32'",
 ]
 

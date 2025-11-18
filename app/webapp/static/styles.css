@@ -1,0 +1,235 @@
+:root {
+  color-scheme: light dark;
+  font-family: "SF Pro Display", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0f1419;
+  color: #f5f7fa;
+}
+
+#app {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-header {
+  text-align: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.date-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.weekday-label {
+  opacity: 0.7;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entry-card {
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.entry-card .time {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.entry-card .title {
+  font-size: 1.05rem;
+  margin: 6px 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  margin-right: 8px;
+}
+
+.badge.lesson {
+  background: rgba(79, 70, 229, 0.3);
+  color: #a5b4fc;
+}
+
+.badge.extra {
+  background: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.primary,
+.secondary,
+.danger {
+  width: 100%;
+  padding: 12px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.primary {
+  background: #4f46e5;
+  color: white;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.week-card {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.card {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: inherit;
+  margin-top: 4px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 16px;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 420px;
+  background: #1c1f25;
+  border-radius: 24px 24px 0 0;
+  padding: 16px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header button {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.time-picker {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.scroll-picker {
+  max-height: 140px;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px;
+}
+
+.scroll-picker button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.scroll-picker button.active {
+  background: rgba(79, 70, 229, 0.25);
+}

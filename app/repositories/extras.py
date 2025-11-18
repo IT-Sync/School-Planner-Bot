@@ -101,6 +101,79 @@ class ExtrasRepository(BaseRepository):
             )
         return int(result or 0)
 
+    async def insert_entry(
+        self,
+        user_id: int,
+        weekday: int,
+        name: str,
+        start_time_value: time,
+        end_time_value: time,
+        location: str | None,
+        notes: str | None,
+    ) -> Extra:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO extras (user_id, weekday, name, start_time, end_time, location, notes)
+                VALUES ($1,$2,$3,$4,$5,$6,$7)
+                RETURNING *
+                """,
+                user_id,
+                weekday,
+                name,
+                start_time_value,
+                end_time_value,
+                location,
+                notes,
+            )
+        return _row_to_extra(row)
+
+    async def update_entry(
+        self,
+        extra_id: int,
+        user_id: int,
+        *,
+        name: str,
+        weekday: int,
+        start_time_value: time,
+        end_time_value: time,
+        location: str | None,
+        notes: str | None,
+    ) -> Extra | None:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE extras
+                SET name = $3,
+                    weekday = $4,
+                    start_time = $5,
+                    end_time = $6,
+                    location = $7,
+                    notes = $8,
+                    updated_at = now()
+                WHERE id = $1 AND user_id = $2
+                RETURNING *
+                """,
+                extra_id,
+                user_id,
+                name,
+                weekday,
+                start_time_value,
+                end_time_value,
+                location,
+                notes,
+            )
+        return _row_to_extra(row) if row else None
+
+    async def get_entry(self, extra_id: int, user_id: int) -> Extra | None:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM extras WHERE id = $1 AND user_id = $2",
+                extra_id,
+                user_id,
+            )
+        return _row_to_extra(row) if row else None
+
     async def update_name(self, extra_id: int, user_id: int, name: str) -> bool:
         async with self.acquire() as conn:
             row = await conn.fetchrow(

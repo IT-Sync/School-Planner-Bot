@@ -106,3 +106,5 @@ class EditableEntry:
     label: str
     start_time: time
     end_time: time
+    location: Optional[str] = None
+    subtitle: Optional[str] = None

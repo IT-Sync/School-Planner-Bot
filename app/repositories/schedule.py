@@ -101,6 +101,79 @@ class ScheduleRepository(BaseRepository):
             )
         return int(result or 0)
 
+    async def insert_entry(
+        self,
+        user_id: int,
+        weekday: int,
+        subject: str,
+        start_time_value: time,
+        end_time_value: time,
+        location: str | None,
+        teacher: str | None,
+    ) -> Lesson:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO schedule (user_id, weekday, subject, start_time, end_time, location, teacher)
+                VALUES ($1,$2,$3,$4,$5,$6,$7)
+                RETURNING *
+                """,
+                user_id,
+                weekday,
+                subject,
+                start_time_value,
+                end_time_value,
+                location,
+                teacher,
+            )
+        return _row_to_lesson(row)
+
+    async def update_entry(
+        self,
+        lesson_id: int,
+        user_id: int,
+        *,
+        subject: str,
+        weekday: int,
+        start_time_value: time,
+        end_time_value: time,
+        location: str | None,
+        teacher: str | None,
+    ) -> Lesson | None:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE schedule
+                SET subject = $3,
+                    weekday = $4,
+                    start_time = $5,
+                    end_time = $6,
+                    location = $7,
+                    teacher = $8,
+                    updated_at = now()
+                WHERE id = $1 AND user_id = $2
+                RETURNING *
+                """,
+                lesson_id,
+                user_id,
+                subject,
+                weekday,
+                start_time_value,
+                end_time_value,
+                location,
+                teacher,
+            )
+        return _row_to_lesson(row) if row else None
+
+    async def get_entry(self, lesson_id: int, user_id: int) -> Lesson | None:
+        async with self.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM schedule WHERE id = $1 AND user_id = $2",
+                lesson_id,
+                user_id,
+            )
+        return _row_to_lesson(row) if row else None
+
     async def update_subject(self, lesson_id: int, user_id: int, subject: str) -> bool:
         async with self.acquire() as conn:
             row = await conn.fetchrow(

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>School Planner WebApp</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>School Planner</h1>
+        <nav class="tabs">
+          <button data-tab="today" class="tab-button active">Сегодня</button>
+          <button data-tab="week" class="tab-button">Неделя</button>
+          <button data-tab="settings" class="tab-button">Настройки</button>
+        </nav>
+      </header>
+      <main>
+        <section id="today-view" class="view active">
+          <div class="day-header">
+            <div>
+              <div id="selected-date" class="date-label"></div>
+              <div id="selected-weekday" class="weekday-label"></div>
+            </div>
+            <button id="edit-day" class="primary">Редактировать</button>
+          </div>
+          <div id="day-entries" class="entries"></div>
+          <button id="add-entry" class="secondary">Добавить</button>
+        </section>
+        <section id="week-view" class="view">
+          <div id="week-grid" class="week-grid"></div>
+        </section>
+        <section id="settings-view" class="view">
+          <h2>Настройки</h2>
+          <div class="card">
+            <label>
+              Режим отображения
+              <select id="display-mode">
+                <option value="combined">Объединённый список</option>
+                <option value="split">Отдельно уроки/внеурочка</option>
+              </select>
+            </label>
+            <label>
+              Цветовая схема
+              <select id="theme">
+                <option value="system">Авто</option>
+                <option value="light">Светлая</option>
+                <option value="dark">Тёмная</option>
+              </select>
+            </label>
+            <button id="reset-schedule" class="danger">Сбросить расписание</button>
+          </div>
+          <div class="card" id="account-info"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="modal-title">Новое занятие</h3>
+          <button id="modal-close" aria-label="Закрыть">×</button>
+        </header>
+        <div class="modal-body">
+          <form id="entry-form">
+            <label>
+              Тип
+              <select name="type" required>
+                <option value="lesson">Урок</option>
+                <option value="extra">Внеурочка</option>
+              </select>
+            </label>
+            <label>
+              Название
+              <input type="text" name="label" required />
+            </label>
+            <label>
+              Локация
+              <input type="text" name="location" />
+            </label>
+            <label>
+              Комментарий
+              <input type="text" name="subtitle" />
+            </label>
+            <div class="time-picker">
+              <div>
+                <p>Начало</p>
+                <div id="start-picker" class="scroll-picker"></div>
+              </div>
+              <div>
+                <p>Окончание</p>
+                <div id="end-picker" class="scroll-picker"></div>
+              </div>
+            </div>
+            <input type="hidden" name="start_time" />
+            <input type="hidden" name="end_time" />
+            <button type="submit" class="primary">Сохранить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>

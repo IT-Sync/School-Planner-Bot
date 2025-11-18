@@ -138,6 +138,8 @@ class ScheduleService:
                 label=lesson.subject,
                 start_time=lesson.start_time,
                 end_time=lesson.end_time,
+                location=lesson.location,
+                subtitle=lesson.teacher,
             )
             for lesson in lessons
         ]
@@ -148,11 +150,85 @@ class ScheduleService:
                 label=extra.name,
                 start_time=extra.start_time,
                 end_time=extra.end_time,
+                location=extra.location,
+                subtitle=extra.notes,
             )
             for extra in extras
         )
         entries.sort(key=lambda entry: entry.start_time)
         return entries
+
+    async def create_entry(
+        self,
+        user_id: int,
+        weekday: int,
+        entry_type: DayItemType,
+        label: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        subtitle: str | None,
+    ) -> EditableEntry:
+        await self.user_repo.get_or_create(user_id)
+        self._validate_weekday(weekday)
+        if not label.strip():
+            raise InputValidationError(["Название занятия не может быть пустым."])
+        if entry_type == DayItemType.LESSON:
+            return await self._create_lesson_entry(
+                user_id,
+                weekday,
+                label,
+                start_time_value,
+                end_time_value,
+                location,
+                subtitle,
+            )
+        return await self._create_extra_entry(
+            user_id,
+            weekday,
+            label,
+            start_time_value,
+            end_time_value,
+            location,
+            subtitle,
+        )
+
+    async def update_entry(
+        self,
+        user_id: int,
+        entry_type: DayItemType,
+        entry_id: int,
+        *,
+        label: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        subtitle: str | None,
+        weekday: int | None = None,
+    ) -> EditableEntry:
+        if not label.strip():
+            raise InputValidationError(["Название занятия не может быть пустым."])
+        if entry_type == DayItemType.LESSON:
+            return await self._update_lesson_entry(
+                user_id,
+                entry_id,
+                label,
+                start_time_value,
+                end_time_value,
+                location,
+                subtitle,
+                weekday,
+            )
+        return await self._update_extra_entry(
+            user_id,
+            entry_id,
+            label,
+            start_time_value,
+            end_time_value,
+            location,
+            subtitle,
+            weekday,
+        )
 
     async def update_entry_label(
         self,
@@ -172,6 +248,156 @@ class ScheduleService:
         if entry_type == DayItemType.LESSON:
             return await self.schedule_repo.delete_entry(entry_id, user_id)
         return await self.extras_repo.delete_entry(entry_id, user_id)
+
+    async def _create_lesson_entry(
+        self,
+        user_id: int,
+        weekday: int,
+        subject: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        teacher: str | None,
+    ) -> EditableEntry:
+        lessons = await self.schedule_repo.list_by_user_and_day(user_id, weekday)
+        new_entry = LessonInput(
+            subject=subject,
+            start_time=start_time_value,
+            end_time=end_time_value,
+            location=location,
+            teacher=teacher,
+        )
+        self._validate_limits(len(lessons) + 1, self.settings.max_lessons_per_day, "уроков")
+        self._validate_overlap([self._lesson_to_input(lesson) for lesson in lessons] + [new_entry], "уроков")
+        created = await self.schedule_repo.insert_entry(
+            user_id=user_id,
+            weekday=weekday,
+            subject=subject,
+            start_time_value=start_time_value,
+            end_time_value=end_time_value,
+            location=location,
+            teacher=teacher,
+        )
+        return self._lesson_to_editable(created)
+
+    async def _create_extra_entry(
+        self,
+        user_id: int,
+        weekday: int,
+        name: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        notes: str | None,
+    ) -> EditableEntry:
+        extras = await self.extras_repo.list_by_user_and_day(user_id, weekday)
+        new_entry = ExtraInput(
+            name=name,
+            start_time=start_time_value,
+            end_time=end_time_value,
+            location=location,
+            notes=notes,
+        )
+        self._validate_limits(len(extras) + 1, self.settings.max_extras_per_day, "внеурочки")
+        self._validate_overlap([self._extra_to_input(extra) for extra in extras] + [new_entry], "внеурочки")
+        created = await self.extras_repo.insert_entry(
+            user_id=user_id,
+            weekday=weekday,
+            name=name,
+            start_time_value=start_time_value,
+            end_time_value=end_time_value,
+            location=location,
+            notes=notes,
+        )
+        return self._extra_to_editable(created)
+
+    async def _update_lesson_entry(
+        self,
+        user_id: int,
+        entry_id: int,
+        subject: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        teacher: str | None,
+        weekday_override: int | None,
+    ) -> EditableEntry:
+        current = await self.schedule_repo.get_entry(entry_id, user_id)
+        if not current:
+            raise InputValidationError(["Урок не найден."])
+        target_weekday = weekday_override or current.weekday
+        self._validate_weekday(target_weekday)
+        lessons = await self.schedule_repo.list_by_user_and_day(user_id, target_weekday)
+        remaining = [lesson for lesson in lessons if lesson.id != entry_id]
+        updated_input = LessonInput(
+            subject=subject,
+            start_time=start_time_value,
+            end_time=end_time_value,
+            location=location,
+            teacher=teacher,
+        )
+        self._validate_limits(len(remaining) + 1, self.settings.max_lessons_per_day, "уроков")
+        self._validate_overlap(
+            [self._lesson_to_input(lesson) for lesson in remaining] + [updated_input],
+            "уроков",
+        )
+        updated = await self.schedule_repo.update_entry(
+            entry_id,
+            user_id,
+            subject=subject,
+            weekday=target_weekday,
+            start_time_value=start_time_value,
+            end_time_value=end_time_value,
+            location=location,
+            teacher=teacher,
+        )
+        if not updated:
+            raise InputValidationError(["Не удалось обновить урок."])
+        return self._lesson_to_editable(updated)
+
+    async def _update_extra_entry(
+        self,
+        user_id: int,
+        entry_id: int,
+        name: str,
+        start_time_value: time_cls,
+        end_time_value: time_cls,
+        location: str | None,
+        notes: str | None,
+        weekday_override: int | None,
+    ) -> EditableEntry:
+        current = await self.extras_repo.get_entry(entry_id, user_id)
+        if not current:
+            raise InputValidationError(["Внеурочная активность не найдена."])
+        target_weekday = weekday_override or current.weekday
+        self._validate_weekday(target_weekday)
+        extras = await self.extras_repo.list_by_user_and_day(user_id, target_weekday)
+        remaining = [extra for extra in extras if extra.id != entry_id]
+        updated_input = ExtraInput(
+            name=name,
+            start_time=start_time_value,
+            end_time=end_time_value,
+            location=location,
+            notes=notes,
+        )
+        self._validate_limits(len(remaining) + 1, self.settings.max_extras_per_day, "внеурочки")
+        self._validate_overlap(
+            [self._extra_to_input(extra) for extra in remaining] + [updated_input],
+            "внеурочки",
+        )
+        updated = await self.extras_repo.update_entry(
+            entry_id,
+            user_id,
+            name=name,
+            weekday=target_weekday,
+            start_time_value=start_time_value,
+            end_time_value=end_time_value,
+            location=location,
+            notes=notes,
+        )
+        if not updated:
+            raise InputValidationError(["Не удалось обновить внеурочку."])
+        return self._extra_to_editable(updated)
 
     async def _build_day_view(
         self,
@@ -262,6 +488,54 @@ class ScheduleService:
             "location": getattr(extra, "location", None),
             "notes": getattr(extra, "notes", None),
         }
+
+    @staticmethod
+    def _lesson_to_input(lesson: Lesson | LessonInput) -> LessonInput:
+        if isinstance(lesson, LessonInput):
+            return lesson
+        return LessonInput(
+            subject=lesson.subject,
+            start_time=lesson.start_time,
+            end_time=lesson.end_time,
+            location=lesson.location,
+            teacher=lesson.teacher,
+        )
+
+    @staticmethod
+    def _extra_to_input(extra: Extra | ExtraInput) -> ExtraInput:
+        if isinstance(extra, ExtraInput):
+            return extra
+        return ExtraInput(
+            name=extra.name,
+            start_time=extra.start_time,
+            end_time=extra.end_time,
+            location=extra.location,
+            notes=extra.notes,
+        )
+
+    @staticmethod
+    def _lesson_to_editable(lesson: Lesson) -> EditableEntry:
+        return EditableEntry(
+            id=lesson.id,
+            type=DayItemType.LESSON,
+            label=lesson.subject,
+            start_time=lesson.start_time,
+            end_time=lesson.end_time,
+            location=lesson.location,
+            subtitle=lesson.teacher,
+        )
+
+    @staticmethod
+    def _extra_to_editable(extra: Extra) -> EditableEntry:
+        return EditableEntry(
+            id=extra.id,
+            type=DayItemType.EXTRA,
+            label=extra.name,
+            start_time=extra.start_time,
+            end_time=extra.end_time,
+            location=extra.location,
+            subtitle=extra.notes,
+        )
 
     async def _copy_lessons(self, source_user_id: int, target_user_id: int) -> int:
         days_with_data = 0
