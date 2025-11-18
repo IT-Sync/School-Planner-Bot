@@ -3,6 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 MENU_TODAY_LABEL = "Расписание на сегодня"
+MENU_TOMORROW_LABEL = "Расписание на завтра"
 MENU_WEEK_LABEL = "Расписание на неделю"
 
 
@@ -36,6 +37,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=MENU_TODAY_LABEL)],
+            [KeyboardButton(text=MENU_TOMORROW_LABEL)],
             [KeyboardButton(text=MENU_WEEK_LABEL)],
         ],
         resize_keyboard=True,

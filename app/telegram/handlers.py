@@ -168,6 +168,14 @@ async def _send_today(message: Message) -> None:
     await message.answer(formatters.render_day_view(view))
 
 
+async def _send_tomorrow(message: Message) -> None:
+    service = _get_service(message)
+    settings = _get_settings(message)
+    tomorrow = datetime.now(tz=ZoneInfo(settings.default_tz)) + timedelta(days=1)
+    view = await service.get_day_view(message.from_user.id, tomorrow)  # type: ignore[arg-type]
+    await message.answer(formatters.render_day_view(view))
+
+
 @router.message(Command("today"))
 async def cmd_today(message: Message) -> None:
     await _send_today(message)
@@ -176,6 +184,11 @@ async def cmd_today(message: Message) -> None:
 @router.message(F.text == keyboards.MENU_TODAY_LABEL)
 async def menu_today(message: Message) -> None:
     await _send_today(message)
+
+
+@router.message(F.text == keyboards.MENU_TOMORROW_LABEL)
+async def menu_tomorrow(message: Message) -> None:
+    await _send_tomorrow(message)
 
 
 async def _send_week(message: Message) -> None:
