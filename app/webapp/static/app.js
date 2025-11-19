@@ -245,8 +245,8 @@ function openModal(entry, weekdayOverride) {
     form.location.value = "";
     form.subtitle.value = "";
   }
-  setPickerValue("start-picker", startDefault);
-  setPickerValue("end-picker", endDefault);
+  setPickerValue("start-picker", startDefault, { scrollIntoView: true });
+  setPickerValue("end-picker", endDefault, { scrollIntoView: true });
   form.start_time.value = startDefault;
   form.end_time.value = endDefault;
 }
@@ -276,9 +276,13 @@ function buildTimePicker(id) {
   }
 }
 
-function setPickerValue(id, value) {
+function setPickerValue(id, value, { scrollIntoView = false } = {}) {
   document.querySelectorAll(`#${id} button`).forEach((button) => {
-    button.classList.toggle("active", button.textContent === value);
+    const isActive = button.textContent === value;
+    button.classList.toggle("active", isActive);
+    if (isActive && scrollIntoView) {
+      button.scrollIntoView({ block: "center", inline: "nearest" });
+    }
   });
 }
 
