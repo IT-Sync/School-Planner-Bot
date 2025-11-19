@@ -204,8 +204,18 @@ select {
   padding: 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
+.modal-content form {
+  padding-bottom: 80px;
+}
+
+@supports (height: 100dvh) {
+  .modal-content {
+    max-height: calc(100dvh - 32px);
+  }
+}
 .modal-header {
   display: flex;
   justify-content: space-between;

@@ -258,10 +258,14 @@ function closeModal() {
 
 function buildTimePicker(id) {
   const container = document.getElementById(id);
+  const minuteStep = 5;
+  const minuteSlots = Array.from({ length: 60 / minuteStep }, (_, index) =>
+    (index * minuteStep).toString().padStart(2, "0"),
+  );
   for (let hour = 6; hour <= 22; hour += 1) {
-    for (let minute = 0; minute < 60; minute += 5) {
+    minuteSlots.forEach((minute) => {
       const button = document.createElement("button");
-      const label = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+      const label = `${hour.toString().padStart(2, "0")}:${minute}`;
       button.textContent = label;
       button.type = "button";
       button.addEventListener("click", () => {
@@ -272,7 +276,7 @@ function buildTimePicker(id) {
         target.value = label;
       });
       container.appendChild(button);
-    }
+    });
   }
 }
 
@@ -290,12 +294,20 @@ function ensureFieldVisible(field) {
   const container = field.closest(".modal-content");
   if (!container) return;
   const padding = 24;
-  const fieldRect = field.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
-  if (fieldRect.top < containerRect.top + padding) {
-    container.scrollTop -= containerRect.top + padding - fieldRect.top;
-  } else if (fieldRect.bottom > containerRect.bottom - padding) {
-    container.scrollTop += fieldRect.bottom - (containerRect.bottom - padding);
+  const fieldRect = field.getBoundingClientRect();
+  const fieldTop = container.scrollTop + (fieldRect.top - containerRect.top);
+  const fieldBottom = fieldTop + fieldRect.height;
+  const visibleTop = container.scrollTop + padding;
+  const visibleBottom = container.scrollTop + container.clientHeight - padding;
+
+  if (fieldTop < visibleTop) {
+    container.scrollTo({ top: Math.max(fieldTop - padding, 0), behavior: "smooth" });
+  } else if (fieldBottom > visibleBottom) {
+    container.scrollTo({
+      top: fieldBottom + padding - container.clientHeight,
+      behavior: "smooth",
+    });
   }
 }
 
