@@ -232,6 +232,7 @@ function openModal(entry, weekdayOverride) {
   state.editingEntry = entry ?? null;
   const modal = document.getElementById("modal");
   modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
   const form = document.getElementById("entry-form");
   const title = document.getElementById("modal-title");
   form.reset();
@@ -260,6 +261,7 @@ function openModal(entry, weekdayOverride) {
 
 function closeModal() {
   document.getElementById("modal").classList.add("hidden");
+  document.body.classList.remove("modal-open");
   state.editingEntry = null;
 }
 
