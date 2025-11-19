@@ -259,9 +259,9 @@ function closeModal() {
 function buildTimePicker(id) {
   const container = document.getElementById(id);
   for (let hour = 6; hour <= 22; hour += 1) {
-    ["00", "15", "30", "45"].forEach((minute) => {
+    for (let minute = 0; minute < 60; minute += 5) {
       const button = document.createElement("button");
-      const label = `${hour.toString().padStart(2, "0")}:${minute}`;
+      const label = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
       button.textContent = label;
       button.type = "button";
       button.addEventListener("click", () => {
@@ -272,7 +272,7 @@ function buildTimePicker(id) {
         target.value = label;
       });
       container.appendChild(button);
-    });
+    }
   }
 }
 
@@ -284,6 +284,19 @@ function setPickerValue(id, value, { scrollIntoView = false } = {}) {
       button.scrollIntoView({ block: "center", inline: "nearest" });
     }
   });
+}
+
+function ensureFieldVisible(field) {
+  const container = field.closest(".modal-content");
+  if (!container) return;
+  const padding = 24;
+  const fieldRect = field.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  if (fieldRect.top < containerRect.top + padding) {
+    container.scrollTop -= containerRect.top + padding - fieldRect.top;
+  } else if (fieldRect.bottom > containerRect.bottom - padding) {
+    container.scrollTop += fieldRect.bottom - (containerRect.bottom - padding);
+  }
 }
 
 async function handleFormSubmit(event) {
@@ -357,6 +370,9 @@ function setupModal() {
     if (event.target.id === "modal") closeModal();
   });
   document.getElementById("entry-form").addEventListener("submit", handleFormSubmit);
+  document.querySelectorAll("#entry-form input, #entry-form select, #entry-form textarea").forEach((field) => {
+    field.addEventListener("focus", () => ensureFieldVisible(field));
+  });
 }
 
 function setupListeners() {

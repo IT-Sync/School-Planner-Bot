@@ -198,9 +198,12 @@ select {
 .modal-content {
   width: 100%;
   max-width: 420px;
+  max-height: calc(100vh - 32px);
   background: #1c1f25;
   border-radius: 24px 24px 0 0;
   padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-header {
