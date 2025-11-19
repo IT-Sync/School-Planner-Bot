@@ -120,15 +120,22 @@ function renderDayView({ entries, date, weekday, containerId, dateLabelId, weekd
   }
   entries.forEach((entry) => {
     const card = document.createElement("div");
-    card.className = "entry-card";
+    card.className = "entry-card entry-compact";
+    const details = [entry.location, entry.subtitle].filter(Boolean);
+    const detailsHtml = details.length
+      ? `<div class="entry-details">${details.map((detail) => `<span>${detail}</span>`).join("")}</div>`
+      : "";
     card.innerHTML = `
-      <div class="time">${normalizeTime(entry.start_time)} – ${normalizeTime(entry.end_time)}</div>
-      <div class="title">${entry.label}</div>
-      <div class="meta">
-        <span class="badge ${entry.type}">${entry.type === "lesson" ? "Урок" : "Кружок"}</span>
-        ${entry.location ? `<span>${entry.location}</span>` : ""}
+      <div class="entry-row">
+        <div class="entry-time">${normalizeTime(entry.start_time)} – ${normalizeTime(entry.end_time)}</div>
+        <div class="entry-main">
+          <div class="entry-header">
+            <span class="entry-title">${entry.label}</span>
+            <span class="badge ${entry.type}">${entry.type === "lesson" ? "Урок" : "Кружок"}</span>
+          </div>
+          ${detailsHtml}
+        </div>
       </div>
-      ${entry.subtitle ? `<div class="subtitle">${entry.subtitle}</div>` : ""}
     `;
     container.appendChild(card);
   });
@@ -311,6 +318,22 @@ function ensureFieldVisible(field) {
   }
 }
 
+function updateViewportHeight() {
+  const viewport = window.visualViewport;
+  const height = viewport ? viewport.height : window.innerHeight;
+  document.documentElement.style.setProperty("--app-vh", `${height}px`);
+}
+
+function setupViewportResize() {
+  updateViewportHeight();
+  const viewport = window.visualViewport;
+  if (viewport) {
+    viewport.addEventListener("resize", updateViewportHeight);
+    viewport.addEventListener("scroll", updateViewportHeight);
+  }
+  window.addEventListener("resize", updateViewportHeight);
+}
+
 async function handleFormSubmit(event) {
   event.preventDefault();
   const form = event.target;
@@ -393,6 +416,7 @@ function setupListeners() {
 }
 
 async function bootstrap() {
+  setupViewportResize();
   buildTimePicker("start-picker");
   buildTimePicker("end-picker");
   setupTabs();

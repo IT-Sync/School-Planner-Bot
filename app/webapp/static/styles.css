@@ -1,6 +1,7 @@
 :root {
   color-scheme: light dark;
   font-family: "SF Pro Display", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-vh: 100vh;
 }
 
 body {
@@ -68,7 +69,7 @@ body {
 .entries {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .entry-card {
@@ -76,6 +77,65 @@ body {
   padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.entry-card.entry-compact {
+  padding: 10px 12px;
+}
+
+.entry-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.entry-time {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 70px;
+  white-space: nowrap;
+}
+
+.entry-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.entry-header .entry-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.entry-header .badge {
+  flex-shrink: 0;
+}
+
+.entry-details {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.entry-details span {
+  position: relative;
+  white-space: nowrap;
+}
+
+.entry-details span:not(:last-child)::after {
+  content: "•";
+  margin-left: 8px;
+  opacity: 0.6;
 }
 
 .entry-card .time {
@@ -198,7 +258,7 @@ select {
 .modal-content {
   width: 100%;
   max-width: 420px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(var(--app-vh) - 32px);
   background: #1c1f25;
   border-radius: 24px 24px 0 0;
   padding: 16px;
@@ -211,10 +271,12 @@ select {
   padding-bottom: 80px;
 }
 
-@supports (height: 100dvh) {
-  .modal-content {
-    max-height: calc(100dvh - 32px);
-  }
+.modal-content form label:last-of-type {
+  margin-bottom: 4px;
+}
+
+.modal-content form .time-picker {
+  margin-top: 8px;
 }
 .modal-header {
   display: flex;
@@ -288,4 +350,15 @@ select {
 .empty {
   opacity: 0.6;
   margin: 8px 0;
+}
+
+@media (max-width: 480px) {
+  .entry-row {
+    gap: 8px;
+  }
+
+  .entry-time {
+    min-width: 60px;
+    font-size: 0.8rem;
+  }
 }
