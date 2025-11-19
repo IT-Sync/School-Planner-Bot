@@ -208,8 +208,34 @@ class ScheduleService:
     ) -> EditableEntry:
         if not label.strip():
             raise InputValidationError(["Название занятия не может быть пустым."])
-        if entry_type == DayItemType.LESSON:
-            return await self._update_lesson_entry(
+        current_type: DayItemType | None = None
+        current_weekday: int | None = None
+        lesson_entry = await self.schedule_repo.get_entry(entry_id, user_id)
+        if lesson_entry:
+            current_type = DayItemType.LESSON
+            current_weekday = lesson_entry.weekday
+        else:
+            extra_entry = await self.extras_repo.get_entry(entry_id, user_id)
+            if extra_entry:
+                current_type = DayItemType.EXTRA
+                current_weekday = extra_entry.weekday
+
+        if current_type is None:
+            raise InputValidationError(["Запись не найдена."])
+
+        if entry_type == current_type:
+            if entry_type == DayItemType.LESSON:
+                return await self._update_lesson_entry(
+                    user_id,
+                    entry_id,
+                    label,
+                    start_time_value,
+                    end_time_value,
+                    location,
+                    subtitle,
+                    weekday,
+                )
+            return await self._update_extra_entry(
                 user_id,
                 entry_id,
                 label,
@@ -219,15 +245,27 @@ class ScheduleService:
                 subtitle,
                 weekday,
             )
-        return await self._update_extra_entry(
+
+        target_weekday = weekday or current_weekday
+        if target_weekday is None:
+            raise InputValidationError(["Не удалось определить день недели записи."])
+
+        if current_type == DayItemType.LESSON:
+            deleted = await self.schedule_repo.delete_entry(entry_id, user_id)
+        else:
+            deleted = await self.extras_repo.delete_entry(entry_id, user_id)
+        if not deleted:
+            raise InputValidationError(["Не удалось изменить тип записи."])
+
+        return await self.create_entry(
             user_id,
-            entry_id,
+            target_weekday,
+            entry_type,
             label,
             start_time_value,
             end_time_value,
             location,
             subtitle,
-            weekday,
         )
 
     async def update_entry_label(
