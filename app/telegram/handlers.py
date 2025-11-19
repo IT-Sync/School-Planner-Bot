@@ -395,22 +395,26 @@ async def edit_entry_action(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-async def _send_today(message: Message, clear_keyboard: bool = False) -> None:
+async def _send_today(message: Message, reset_keyboard: bool = False) -> None:
     service = _get_service(message)
     settings = _get_settings(message)
     now = datetime.now(tz=ZoneInfo(settings.default_tz))
     view = await service.get_day_view(message.from_user.id, now)  # type: ignore[arg-type]
-    reply_markup = _REMOVE_KEYBOARD if clear_keyboard else None
+    reply_markup = _REMOVE_KEYBOARD if reset_keyboard else None
     await message.answer(formatters.render_day_view(view), reply_markup=reply_markup)
+    if reset_keyboard:
+        await message.answer("Меню обновлено:", reply_markup=_main_menu(message))
 
 
-async def _send_tomorrow(message: Message, clear_keyboard: bool = False) -> None:
+async def _send_tomorrow(message: Message, reset_keyboard: bool = False) -> None:
     service = _get_service(message)
     settings = _get_settings(message)
     tomorrow = datetime.now(tz=ZoneInfo(settings.default_tz)) + timedelta(days=1)
     view = await service.get_day_view(message.from_user.id, tomorrow)  # type: ignore[arg-type]
-    reply_markup = _REMOVE_KEYBOARD if clear_keyboard else None
+    reply_markup = _REMOVE_KEYBOARD if reset_keyboard else None
     await message.answer(formatters.render_day_view(view), reply_markup=reply_markup)
+    if reset_keyboard:
+        await message.answer("Меню обновлено:", reply_markup=_main_menu(message))
 
 
 @router.message(Command("today"))
@@ -420,22 +424,24 @@ async def cmd_today(message: Message) -> None:
 
 @router.message(F.text == keyboards.MENU_TODAY_LABEL)
 async def menu_today(message: Message) -> None:
-    await _send_today(message, clear_keyboard=True)
+    await _send_today(message, reset_keyboard=True)
 
 
 @router.message(F.text == keyboards.MENU_TOMORROW_LABEL)
 async def menu_tomorrow(message: Message) -> None:
-    await _send_tomorrow(message, clear_keyboard=True)
+    await _send_tomorrow(message, reset_keyboard=True)
 
 
-async def _send_week(message: Message, clear_keyboard: bool = False) -> None:
+async def _send_week(message: Message, reset_keyboard: bool = False) -> None:
     service = _get_service(message)
     settings = _get_settings(message)
     now = datetime.now(tz=ZoneInfo(settings.default_tz))
     start_of_week = now - timedelta(days=now.weekday())
     views = await service.get_week_view(message.from_user.id, start_of_week.date())  # type: ignore[arg-type]
-    reply_markup = _REMOVE_KEYBOARD if clear_keyboard else None
+    reply_markup = _REMOVE_KEYBOARD if reset_keyboard else None
     await message.answer(formatters.render_week_view(views), reply_markup=reply_markup)
+    if reset_keyboard:
+        await message.answer("Меню обновлено:", reply_markup=_main_menu(message))
 
 
 @router.message(Command("week"))
@@ -445,7 +451,7 @@ async def cmd_week(message: Message) -> None:
 
 @router.message(F.text == keyboards.MENU_WEEK_LABEL)
 async def menu_week(message: Message) -> None:
-    await _send_week(message, clear_keyboard=True)
+    await _send_week(message, reset_keyboard=True)
 
 
 @router.message(F.text == LEGACY_OPEN_MENU_LABEL)
@@ -454,6 +460,7 @@ async def legacy_open_schedule(message: Message) -> None:
         "Эта кнопка больше не поддерживается. Используйте команды или актуальное меню.",
         reply_markup=_REMOVE_KEYBOARD,
     )
+    await message.answer("Меню обновлено:", reply_markup=_main_menu(message))
 
 
 @router.message(Command(commands=["set_lessons", "setlessons"]))
