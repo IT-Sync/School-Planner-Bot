@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.domain import DayItemType, EditableEntry
@@ -8,7 +8,6 @@ DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 MENU_TODAY_LABEL = "Расписание на сегодня"
 MENU_TOMORROW_LABEL = "Расписание на завтра"
 MENU_WEEK_LABEL = "Расписание на неделю"
-MENU_WEBAPP_LABEL = "Открыть расписание"
 
 
 def weekday_keyboard(prefix: str) -> InlineKeyboardMarkup:
@@ -80,6 +79,4 @@ def main_menu_keyboard(webapp_url: str | None = None) -> ReplyKeyboardMarkup:
         [KeyboardButton(text=MENU_TOMORROW_LABEL)],
         [KeyboardButton(text=MENU_WEEK_LABEL)],
     ]
-    if webapp_url:
-        keyboard.insert(0, [KeyboardButton(text=MENU_WEBAPP_LABEL, web_app=WebAppInfo(url=webapp_url))])
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
