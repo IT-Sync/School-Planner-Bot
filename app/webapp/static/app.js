@@ -357,10 +357,13 @@ async function handleFormSubmit(event) {
   });
   try {
     if (state.editingEntry) {
-      await fetchJSON(`/api/schedule/item/${state.editingEntry.id}`, {
-        method: "PUT",
-        body,
-      });
+      await fetchJSON(
+        `/api/schedule/item/${state.editingEntry.id}?source_type=${encodeURIComponent(state.editingEntry.type)}`,
+        {
+          method: "PUT",
+          body,
+        },
+      );
     } else {
       await fetchJSON("/api/schedule/day", {
         method: "POST",
@@ -380,7 +383,8 @@ async function handleEditAction(event) {
   const action = target.dataset.action;
   if (!action) return;
   const id = Number(target.dataset.id);
-  const entry = state.editEntries.find((item) => item.id === id);
+  const type = target.dataset.type;
+  const entry = state.editEntries.find((item) => item.id === id && item.type === type);
   if (!entry) return;
   if (action === "edit") {
     openModal(entry, state.editWeekday);

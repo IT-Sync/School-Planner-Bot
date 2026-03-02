@@ -169,6 +169,7 @@ async def create_entry(
 async def update_entry(
     entry_id: int,
     payload: UpdateEntryRequest,
+    source_type: EntryType | None = Query(default=None),
     user: WebAppUser = Depends(get_current_user),
     service: ScheduleService = Depends(get_schedule_service),
 ) -> ScheduleEntry:
@@ -177,6 +178,7 @@ async def update_entry(
             user.id,
             _map_entry_type(payload.type),
             entry_id,
+            source_type=_map_entry_type(source_type) if source_type else None,
             label=payload.label,
             start_time_value=payload.start_time,
             end_time_value=payload.end_time,

@@ -199,6 +199,7 @@ class ScheduleService:
         entry_type: DayItemType,
         entry_id: int,
         *,
+        source_type: DayItemType | None = None,
         label: str,
         start_time_value: time_cls,
         end_time_value: time_cls,
@@ -208,15 +209,33 @@ class ScheduleService:
     ) -> EditableEntry:
         if not label.strip():
             raise InputValidationError(["Название занятия не может быть пустым."])
-        current_type: DayItemType | None = None
+        current_type = source_type
         current_weekday: int | None = None
-        lesson_entry = await self.schedule_repo.get_entry(entry_id, user_id)
-        if lesson_entry:
-            current_type = DayItemType.LESSON
-            current_weekday = lesson_entry.weekday
-        else:
+        if source_type == DayItemType.LESSON:
+            lesson_entry = await self.schedule_repo.get_entry(entry_id, user_id)
+            if lesson_entry:
+                current_weekday = lesson_entry.weekday
+            else:
+                current_type = None
+        elif source_type == DayItemType.EXTRA:
             extra_entry = await self.extras_repo.get_entry(entry_id, user_id)
             if extra_entry:
+                current_weekday = extra_entry.weekday
+            else:
+                current_type = None
+        else:
+            lesson_entry = await self.schedule_repo.get_entry(entry_id, user_id)
+            extra_entry = await self.extras_repo.get_entry(entry_id, user_id)
+            if lesson_entry and extra_entry:
+                raise InputValidationError(
+                    [
+                        "Найдены записи с одинаковым ID. Повторите запрос с указанием исходного типа.",
+                    ],
+                )
+            if lesson_entry:
+                current_type = DayItemType.LESSON
+                current_weekday = lesson_entry.weekday
+            elif extra_entry:
                 current_type = DayItemType.EXTRA
                 current_weekday = extra_entry.weekday
 
