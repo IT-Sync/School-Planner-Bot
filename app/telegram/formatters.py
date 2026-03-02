@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import time
 from typing import Iterable
 
-from app.domain import DayItem, DayItemType, DayView, EditableEntry, ShareScope, UsageStats
+from app.domain import AdminUserLessonStat, DayItem, DayItemType, DayView, EditableEntry, ShareScope, UsageStats
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -81,6 +81,25 @@ def render_usage_stats(stats: UsageStats) -> str:
         f"- Ссылок /share за 7 дней: *{stats.share_links_week}*",
         f"- Активных (не истекли): *{stats.active_share_links}*",
     ]
+    return "\n".join(lines)
+
+
+def render_admin_users_with_lesson_counts(
+    rows: list[AdminUserLessonStat],
+    limit: int,
+    offset: int,
+) -> str:
+    lines = [
+        f"*Пользователи (уроки/внеурочка), offset={offset}, limit={limit}*",
+    ]
+    if not rows:
+        lines.append("_пользователи не найдены_")
+        return "\n".join(lines)
+    for idx, row in enumerate(rows, start=offset + 1):
+        lines.append(
+            f"{idx}. `ID {row.user_id}` — уроков: *{row.lessons_count}*, внеурочки: *{row.extras_count}*",
+        )
+    lines.append("\nДля просмотра расписания: `/admin_user_schedule <user_id>`")
     return "\n".join(lines)
 
 

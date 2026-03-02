@@ -1,7 +1,15 @@
 from __future__ import annotations
 
-from app.domain import UsageStats
+from app.domain import AdminUserLessonStat, UsageStats
 from app.repositories.base import BaseRepository
+
+
+def _row_to_admin_user_lesson_stat(row) -> AdminUserLessonStat:
+    return AdminUserLessonStat(
+        user_id=row["user_id"],
+        lessons_count=int(row["lessons_count"] or 0),
+        extras_count=int(row["extras_count"] or 0),
+    )
 
 
 class StatsRepository(BaseRepository):
@@ -94,3 +102,34 @@ class StatsRepository(BaseRepository):
             share_links_week=int(row["share_links_week"] or 0),
             active_share_links=int(row["active_share_links"] or 0),
         )
+
+    async def list_users_with_lesson_counts(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[AdminUserLessonStat]:
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(offset, 0)
+        async with self.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    u.id AS user_id,
+                    (SELECT COUNT(*) FROM schedule s WHERE s.user_id = u.id) AS lessons_count,
+                    (SELECT COUNT(*) FROM extras e WHERE e.user_id = u.id) AS extras_count
+                FROM users u
+                ORDER BY lessons_count DESC, extras_count DESC, u.id ASC
+                LIMIT $1 OFFSET $2
+                """,
+                safe_limit,
+                safe_offset,
+            )
+        return [_row_to_admin_user_lesson_stat(row) for row in rows]
+
+    async def user_exists(self, user_id: int) -> bool:
+        async with self.acquire() as conn:
+            value = await conn.fetchval(
+                "SELECT 1 FROM users WHERE id = $1",
+                user_id,
+            )
+        return value is not None

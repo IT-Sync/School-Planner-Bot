@@ -110,6 +110,13 @@ class UsageStats:
 
 
 @dataclass(slots=True)
+class AdminUserLessonStat:
+    user_id: int
+    lessons_count: int
+    extras_count: int
+
+
+@dataclass(slots=True)
 class EditableEntry:
     id: int
     type: DayItemType

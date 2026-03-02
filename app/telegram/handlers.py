@@ -85,6 +85,15 @@ def _share_import_result_text(result) -> str:
     return "\n".join(lines)
 
 
+def _parse_int_arg(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value.strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def _message_target(event: Message | CallbackQuery) -> Message:
     if isinstance(event, CallbackQuery):
         if not event.message:
@@ -205,6 +214,49 @@ async def cmd_admin_stats(message: Message) -> None:
     stats = await service.get_usage_stats()
     await message.answer(
         formatters.render_usage_stats(stats),
+        reply_markup=_main_menu(message),
+    )
+
+
+@router.message(Command("admin_users"))
+async def cmd_admin_users(message: Message, command: CommandObject | None = None) -> None:
+    if not _is_admin(message.from_user.id if message.from_user else None):  # type: ignore[arg-type]
+        await message.answer("Эта команда доступна только администраторам.")
+        return
+    args = (command.args or "").split() if command and command.args else []
+    limit = _parse_int_arg(args[0]) if len(args) >= 1 else 20
+    offset = _parse_int_arg(args[1]) if len(args) >= 2 else 0
+    if limit is None or offset is None:
+        await message.answer("Формат: /admin_users [limit] [offset]")
+        return
+    service = _get_admin_service(message)
+    rows = await service.list_users_with_lesson_counts(limit=limit, offset=offset)
+    await message.answer(
+        formatters.render_admin_users_with_lesson_counts(rows, limit=max(1, min(limit, 100)), offset=max(offset, 0)),
+        reply_markup=_main_menu(message),
+    )
+
+
+@router.message(Command("admin_user_schedule"))
+async def cmd_admin_user_schedule(message: Message, command: CommandObject | None = None) -> None:
+    if not _is_admin(message.from_user.id if message.from_user else None):  # type: ignore[arg-type]
+        await message.answer("Эта команда доступна только администраторам.")
+        return
+    user_id = _parse_int_arg(command.args if command else None)
+    if user_id is None:
+        await message.answer("Формат: /admin_user_schedule <user_id>")
+        return
+    admin_service = _get_admin_service(message)
+    if not await admin_service.user_exists(user_id):
+        await message.answer("Пользователь с таким ID не найден.")
+        return
+    schedule_service = _get_service(message)
+    settings = _get_settings(message)
+    now = datetime.now(tz=ZoneInfo(settings.default_tz))
+    start_of_week = now - timedelta(days=now.weekday())
+    views = await schedule_service.get_week_view(user_id, start_of_week.date())
+    await message.answer(
+        f"*Расписание пользователя* `ID {user_id}`\n\n{formatters.render_week_view(views)}",
         reply_markup=_main_menu(message),
     )
 
