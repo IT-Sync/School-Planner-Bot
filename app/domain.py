@@ -94,9 +94,19 @@ class UsageStats:
     new_users_day: int
     new_users_week: int
     active_users: int
+    active_users_day: int
+    active_users_week: int
+    users_with_lessons: int
+    users_with_extras: int
     lessons_total: int
     extras_total: int
+    avg_lessons_per_active_user: float
+    avg_extras_per_active_user: float
+    avg_total_entries_per_active_user: float
+    share_links_total: int
+    share_links_day: int
     share_links_week: int
+    active_share_links: int
 
 
 @dataclass(slots=True)

@@ -54,15 +54,32 @@ def render_preview_extras(entries: Iterable[ExtraInput], weekday: int) -> str:
 
 
 def render_usage_stats(stats: UsageStats) -> str:
+    active_ratio = (stats.active_users / stats.total_users * 100) if stats.total_users else 0.0
     lines = [
-        "*Статистика использования*",
+        "*Расширенная статистика использования*",
+        "",
+        "*Пользователи*",
         f"- Всего пользователей: *{stats.total_users}*",
         f"- Новых за 24 часа: *{stats.new_users_day}*",
         f"- Новых за 7 дней: *{stats.new_users_week}*",
-        f"- Активных пользователей: *{stats.active_users}*",
+        f"- Активных пользователей (всего): *{stats.active_users}* ({active_ratio:.1f}%)",
+        f"- Активных за 24 часа: *{stats.active_users_day}*",
+        f"- Активных за 7 дней: *{stats.active_users_week}*",
+        f"- Пользователей с уроками: *{stats.users_with_lessons}*",
+        f"- Пользователей с внеурочкой: *{stats.users_with_extras}*",
+        "",
+        "*Записи*",
         f"- Записей уроков: *{stats.lessons_total}*",
         f"- Записей внеурочки: *{stats.extras_total}*",
+        f"- Среднее уроков на активного пользователя: *{stats.avg_lessons_per_active_user:.2f}*",
+        f"- Среднее внеурочки на активного пользователя: *{stats.avg_extras_per_active_user:.2f}*",
+        f"- Среднее всех записей на активного пользователя: *{stats.avg_total_entries_per_active_user:.2f}*",
+        "",
+        "*Share-ссылки*",
+        f"- Всего создано: *{stats.share_links_total}*",
+        f"- Создано за 24 часа: *{stats.share_links_day}*",
         f"- Ссылок /share за 7 дней: *{stats.share_links_week}*",
+        f"- Активных (не истекли): *{stats.active_share_links}*",
     ]
     return "\n".join(lines)
 
