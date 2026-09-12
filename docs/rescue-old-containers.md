@@ -21,6 +21,9 @@ old_web="$(docker ps -q \
   --filter label=com.docker.compose.project=school-planner-bot \
   --filter label=com.docker.compose.service=webapp)"
 test -n "$old_db" && test -n "$old_bot" && test -n "$old_web"
+# `docker ps -q` returns a short ID, while `docker compose ps -q` returns a full
+# ID. Normalize it before the later identity check.
+old_db="$(docker inspect --format '{{.Id}}' "$old_db")"
 docker inspect --format '{{.Name}} {{.Config.Image}} {{range .Mounts}}{{.Source}} -> {{.Destination}}{{end}}' "$old_db"
 ```
 
