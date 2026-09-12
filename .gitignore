@@ -29,6 +29,11 @@ build/
 
 # Logs
 *.log
+uploads/
+pgdata/
+backups/
+test-results/
+playwright-report/
 
 # OS files
 .DS_Store

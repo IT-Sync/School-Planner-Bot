@@ -1,52 +1,87 @@
-version: "3.9"
+name: school-planner
+
+x-app: &app
+  image: school-planner:local
+  build: .
+  env_file: .env
+  environment: &app-env
+    DATABASE_HOST: db
+    DATABASE_PORT: 5432
+    DATABASE_USER: ${DATABASE_USER:-planner}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+    DATABASE_NAME: ${DATABASE_NAME:-planner}
+    APP_ENV: ${APP_ENV:-production}
+    AUTO_MIGRATE: "false"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
 
 services:
   db:
-    image: postgres:15
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: planner
-      POSTGRES_USER: planner
-      POSTGRES_PASSWORD: planner
-    ports:
-      - "5544:5432"
+      POSTGRES_DB: ${DATABASE_NAME:-planner}
+      POSTGRES_USER: ${DATABASE_USER:-planner}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
     volumes:
-      - /opt/pybot/School-Planner-Bot/pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U planner -d planner"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  migrate:
+    <<: *app
+    command: ["python", "-m", "app.migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
   bot:
-    build: .
+    <<: *app
     depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-    ports:
-      - "8088:8088"
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.getenv('HEALTH_PORT','8088'),timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
   webapp:
-    build: .
+    <<: *app
+    command: ["uvicorn", "app.webapp.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--no-access-log"]
     depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-    command: >
-      uvicorn app.webapp.main:app --host 0.0.0.0 --port 8000
+      migrate:
+        condition: service_completed_successfully
     ports:
-      - "11002:8000"
+      - "${WEBAPP_BIND_HOST:-127.0.0.1}:${WEBAPP_PORT:-11002}:8000"
     restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
 volumes:
-  pgdata:
+  postgres-data:

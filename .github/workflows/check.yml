@@ -1,0 +1,45 @@
+name: Planner checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: planner_test
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: planner_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U planner_test -d planner_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      BOT_TOKEN: '123:test'
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: 5432
+      DATABASE_USER: planner_test
+      DATABASE_PASSWORD: ci-test-only
+      DATABASE_NAME: planner_test
+      TEST_DATABASE_URL: postgresql://planner_test:ci-test-only@127.0.0.1:5432/planner_test
+      RUN_BROWSER_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.lock && pip install -e '.[dev]' -c requirements.lock
+      - run: python -m playwright install --with-deps chromium
+      - run: ruff check app tests && ruff format --check app tests
+      - run: python -m app.migrate
+      - run: pytest -q
+      - run: docker build -t school-planner:ci .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-screenshots
+          path: test-results/
