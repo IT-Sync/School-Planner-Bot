@@ -1,100 +1,36 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>School Planner WebApp</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-  </head>
-  <body>
-    <div id="app">
-      <header class="app-header">
-        <nav class="tabs">
-          <button data-tab="today" class="tab-button active">Сегодня</button>
-          <button data-tab="tomorrow" class="tab-button">Завтра</button>
-          <button data-tab="week" class="tab-button">Неделя</button>
-          <button data-tab="edit" class="tab-button">Редактирование</button>
-        </nav>
-      </header>
-      <main>
-        <section id="today-view" class="view active">
-          <div class="day-header">
-            <div>
-              <div id="selected-date" class="date-label"></div>
-              <div id="selected-weekday" class="weekday-label"></div>
-            </div>
-          </div>
-          <div id="day-entries" class="entries"></div>
-        </section>
-        <section id="tomorrow-view" class="view">
-          <div class="day-header">
-            <div>
-              <div id="tomorrow-date" class="date-label"></div>
-              <div id="tomorrow-weekday" class="weekday-label"></div>
-            </div>
-          </div>
-          <div id="tomorrow-entries" class="entries"></div>
-        </section>
-        <section id="week-view" class="view">
-          <div id="week-grid" class="week-grid"></div>
-        </section>
-        <section id="edit-view" class="view">
-          <div class="card">
-            <p>Выберите день недели:</p>
-            <div id="edit-weekdays" class="weekday-picker"></div>
-          </div>
-          <div class="entries" id="edit-entries"></div>
-          <button id="add-entry" class="primary">Добавить запись</button>
-        </section>
-      </main>
-    </div>
-
-    <div id="modal" class="modal hidden">
-      <div class="modal-content">
-        <header class="modal-header">
-          <h3 id="modal-title"></h3>
-          <button id="modal-close" aria-label="Закрыть">×</button>
-        </header>
-        <div class="modal-body">
-          <form id="entry-form">
-            <label>
-              Тип
-              <select name="type" required>
-                <option value="lesson">Урок</option>
-                <option value="extra">Внеурочка</option>
-              </select>
-            </label>
-            <label>
-              Название
-              <input type="text" name="label" required />
-            </label>
-            <label>
-              Локация
-              <input type="text" name="location" />
-            </label>
-            <label>
-              Комментарий
-              <input type="text" name="subtitle" />
-            </label>
-            <div class="time-picker">
-              <div>
-                <p>Начало</p>
-                <div id="start-picker" class="scroll-picker"></div>
-              </div>
-              <div>
-                <p>Окончание</p>
-                <div id="end-picker" class="scroll-picker"></div>
-              </div>
-            </div>
-            <input type="hidden" name="start_time" />
-            <input type="hidden" name="end_time" />
-            <button type="submit" class="primary">Сохранить</button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
-    <script type="module" src="/static/app.js" defer></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#f5f3eb" />
+  <meta name="description" content="Уроки, кружки и домашние задания — спокойный план школьной недели для всей семьи." />
+  <title>Школьный планер</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">К содержимому</a>
+  <div id="app" class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="Школьный планер — главная"><span class="brand-mark" aria-hidden="true">ш.</span><span>школьный<br /><strong>планер</strong></span></a>
+      <div class="header-note">Меньше суеты.<br />Больше времени на жизнь.</div>
+      <button id="profile-button" class="profile-button" aria-label="Выбрать профиль" disabled><span id="profile-avatar" class="avatar">Ш</span><span id="profile-name">Загрузка…</span><span aria-hidden="true">⌄</span></button>
+    </header>
+    <nav class="main-nav" aria-label="Разделы планера">
+      <button class="nav-item active" data-view="schedule" aria-current="page"><span class="nav-icon" data-icon="calendar" aria-hidden="true">▦</span><span>Расписание</span></button>
+      <button class="nav-item" data-view="tasks"><span class="nav-icon" data-icon="check" aria-hidden="true">✓</span><span>Задания</span><span id="task-count" class="count hidden"></span></button>
+      <button class="nav-item" data-view="settings"><span class="nav-icon" data-icon="settings" aria-hidden="true">⚙</span><span>Настройки</span></button>
+      <span class="nav-caption">Твоя неделя, в порядке.</span>
+    </nav>
+    <main id="main" tabindex="-1" aria-busy="true"><div class="loading-panel"><div class="skeleton skeleton-heading"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><p>Открываем ваш планер…</p></div></main>
+    <footer class="app-footer"><span>У каждого дня свой ритм.</span><span>Школьный планер</span></footer>
+  </div>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-header"><div><span id="sheet-eyebrow" class="eyebrow">Школьный планер</span><h2 id="sheet-title"></h2></div><button id="sheet-close" class="icon-button" aria-label="Закрыть окно">×</button></div>
+    <div id="sheet-body" class="sheet-body"></div>
+  </dialog>
+  <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+  <script type="module" src="/static/app.js" defer></script>
+</body>
 </html>
