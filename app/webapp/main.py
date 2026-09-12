@@ -255,8 +255,10 @@ async def response_headers(request, call_next):
         response.headers["Expires"] = "0"
     elif request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
-    elif request.url.path.startswith("/static/"):
+    elif request.url.path.startswith("/static/") and request.query_params.get("v"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
     else:
         response.headers["Cache-Control"] = "no-cache"
     response.headers["Content-Security-Policy"] = (

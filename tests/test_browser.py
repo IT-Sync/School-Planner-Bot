@@ -91,6 +91,10 @@ async def test_web_workflows(width):
             assert stylesheet.ok
             assert "text/css" in stylesheet.headers["content-type"]
             assert "immutable" in stylesheet.headers["cache-control"]
+            legacy_stylesheet = await page.request.get(f"{base}/static/styles.css")
+            assert legacy_stylesheet.ok
+            assert "must-revalidate" in legacy_stylesheet.headers["cache-control"]
+            assert "planner-v2.css?v=20260912.1" in await legacy_stylesheet.text()
             await page.get_by_role("button", name="Поделиться расписанием").click()
             await page.get_by_role("checkbox", name="Вс").uncheck()
             await page.get_by_role("button", name="Закрыть окно").click()
