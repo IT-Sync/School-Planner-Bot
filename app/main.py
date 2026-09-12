@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 
 from app.config import get_settings
 from app.core.database import Database
 from app.core.logging import configure_logging
 from app.health import start_health_server
-from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, StatsRepository, UserRepository
+from app.reminders import run_reminders
+from app.repositories import (
+    ExtrasRepository,
+    ScheduleRepository,
+    ShareTokenRepository,
+    StatsRepository,
+    UserRepository,
+)
 from app.services import AdminService, ScheduleService
 from app.telegram import handlers
 
@@ -27,10 +35,16 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
     await bot.set_my_commands(
         [
+            BotCommand(command="web", description="Открыть школьный планер"),
             BotCommand(command="today", description="Расписание на сегодня"),
             BotCommand(command="week", description="Расписание на неделю"),
         ]
     )
+
+    if settings.webapp_url:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="Планер", web_app=WebAppInfo(url=settings.webapp_url))
+        )
 
     database = Database(settings)
     await database.connect()
@@ -48,9 +62,13 @@ async def main() -> None:
 
     dp.include_router(handlers.router)
 
+    reminders = asyncio.create_task(run_reminders(database.pool, bot, settings))
     try:
         await dp.start_polling(bot)
     finally:
+        reminders.cancel()
+        with suppress(asyncio.CancelledError):
+            await reminders
         health_server.close()
         await health_server.wait_closed()
         await database.close()

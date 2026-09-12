@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from app.config import get_settings
 from app.domain import User
 from app.repositories.base import BaseRepository
 
@@ -33,13 +34,14 @@ class UserRepository(BaseRepository):
 
             row = await conn.fetchrow(
                 """
-                INSERT INTO users (id)
-                VALUES ($1)
+                INSERT INTO users (id, timezone)
+                VALUES ($1, $2)
                 ON CONFLICT (id) DO UPDATE
                 SET updated_at = EXCLUDED.updated_at
                 RETURNING *
                 """,
                 user_id,
+                get_settings().default_tz,
             )
         return _row_to_user(row)
 

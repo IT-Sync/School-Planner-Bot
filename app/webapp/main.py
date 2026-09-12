@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
@@ -10,11 +10,18 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.core.database import Database
-from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
+from app.domain import DayItemType, EditableEntry
+from app.planner.api import create_router
+from app.repositories import (
+    ExtrasRepository,
+    ScheduleRepository,
+    ShareTokenRepository,
+    UserRepository,
+)
 from app.services import ScheduleService
 from app.services.errors import InputValidationError
-from app.domain import DayItemType, EditableEntry
 from app.webapp.auth import WebAppAuthError, WebAppUser, verify_init_data
+from app.webapp.limits import BodyLimitMiddleware
 from app.webapp.schemas import (
     CreateEntryRequest,
     DayScheduleResponse,
@@ -30,6 +37,7 @@ database = Database(settings)
 _schedule_service: ScheduleService | None = None
 
 
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     global _schedule_service
     await database.connect()
@@ -38,8 +46,10 @@ async def lifespan(app: FastAPI):
     extras_repo = ExtrasRepository(database.pool)
     share_repo = ShareTokenRepository(database.pool)
     _schedule_service = ScheduleService(settings, user_repo, schedule_repo, extras_repo, share_repo)
-    yield
-    await database.close()
+    try:
+        yield
+    finally:
+        await database.close()
 
 
 app = FastAPI(
@@ -62,11 +72,7 @@ def get_current_user(
     request: Request,
     init_data_header: str | None = Header(None, alias="X-Telegram-Init-Data"),
 ) -> WebAppUser:
-    init_data = (
-        init_data_header
-        or request.query_params.get("tg_web_app_data")
-        or request.query_params.get("tgWebAppData")
-    )
+    init_data = init_data_header
     if init_data:
         logger.debug(
             "Received initData length=%s via %s",
@@ -74,11 +80,13 @@ def get_current_user(
             "header" if init_data_header else "query",
         )
         try:
-            return verify_init_data(init_data, settings.bot_token)
+            return verify_init_data(
+                init_data, settings.bot_token, max_age=settings.webapp_auth_max_age
+            )
         except WebAppAuthError as exc:
             logger.warning("WebApp auth failed: %s", exc)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
-    if settings.webapp_dev_user_id:
+    if settings.webapp_dev_user_id and settings.app_env != "production":
         logger.info(
             "WebApp dev fallback user_id=%s (no initData; path=%s)",
             settings.webapp_dev_user_id,
@@ -201,3 +209,57 @@ async def delete_entry(
     deleted = await service.delete_entry(user.id, _map_entry_type(entry_type), entry_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Запись не найдена")
+
+
+app.include_router(create_router(database, get_current_user, settings))
+
+
+@app.get("/api/public-config")
+async def public_config():
+    return {
+        "bot_username": settings.bot_username,
+        "dev_mode": bool(settings.webapp_dev_user_id and settings.app_env != "production"),
+    }
+
+
+@app.get("/healthz")
+@app.get("/ready")
+async def readiness():
+    try:
+        ready = await database.pool.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM planner_migrations WHERE name='0002_planner.sql')"
+        )
+        if not ready:
+            raise RuntimeError("Migrations are pending")
+        return {"status": "ok"}
+    except Exception:
+        raise HTTPException(503, "Database is not ready") from None
+
+
+@app.middleware("http")
+async def response_headers(request, call_next):
+    if len(request.url.query) > 2048:
+        return HTMLResponse("Request URL too long", status_code=414)
+    # Header-only authentication; never retain Telegram credentials in URL logs.
+    if any(key in request.query_params for key in ("tg_web_app_data", "tgWebAppData")):
+        return HTMLResponse("Use the authentication header", status_code=400)
+    length = request.headers.get("content-length", "0")
+    if length.isdigit() and int(length) > settings.max_attachment_bytes + 65536:
+        return HTMLResponse("File too large", status_code=413)
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = (
+        "no-store"
+        if request.url.path.startswith("/api/") or request.url.path == "/"
+        else "no-cache"
+    )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    )
+    return response
+
+
+app.add_middleware(
+    BodyLimitMiddleware, max_bytes=min(settings.max_attachment_bytes, 5242880) + 65536
+)

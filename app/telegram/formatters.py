@@ -3,7 +3,15 @@ from __future__ import annotations
 from datetime import time
 from typing import Iterable
 
-from app.domain import AdminUserLessonStat, DayItem, DayItemType, DayView, EditableEntry, ShareScope, UsageStats
+from app.domain import (
+    AdminUserLessonStat,
+    DayItem,
+    DayItemType,
+    DayView,
+    EditableEntry,
+    ShareScope,
+    UsageStats,
+)
 from app.dto import ExtraInput, LessonInput
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -41,7 +49,9 @@ def render_preview_lessons(entries: Iterable[LessonInput], weekday: int) -> str:
     lines = [f"*Предпросмотр уроков ({escape_markdown(weekday_label(weekday))}):*"]
     for entry in entries:
         body = f"{escape_markdown(entry.subject)}"
-        lines.append(_format_slot(entry.start_time, entry.end_time, body, entry.location, entry.teacher))
+        lines.append(
+            _format_slot(entry.start_time, entry.end_time, body, entry.location, entry.teacher)
+        )
     return "\n".join(lines)
 
 
@@ -49,7 +59,9 @@ def render_preview_extras(entries: Iterable[ExtraInput], weekday: int) -> str:
     lines = [f"*Предпросмотр внеурочки ({escape_markdown(weekday_label(weekday))}):*"]
     for entry in entries:
         body = f"{escape_markdown(entry.name)}"
-        lines.append(_format_slot(entry.start_time, entry.end_time, body, entry.location, entry.notes))
+        lines.append(
+            _format_slot(entry.start_time, entry.end_time, body, entry.location, entry.notes)
+        )
     return "\n".join(lines)
 
 

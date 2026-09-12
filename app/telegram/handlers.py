@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from zoneinfo import ZoneInfo
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.filters.command import CommandObject
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardMarkup
-from zoneinfo import ZoneInfo
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
 
 from app.config import Settings
 from app.domain import DayItemType, ShareScope
@@ -23,7 +31,9 @@ _settings: Settings | None = None
 LEGACY_OPEN_MENU_LABEL = "Открыть расписание"
 
 
-def configure_dependencies(service: ScheduleService, settings: Settings, admin_service: AdminService) -> None:
+def configure_dependencies(
+    service: ScheduleService, settings: Settings, admin_service: AdminService
+) -> None:
     global _schedule_service, _settings, _admin_service
     _schedule_service = service
     _settings = settings
@@ -156,6 +166,9 @@ async def _handle_share_deep_link(message: Message, args: str) -> bool:
 async def cmd_start(message: Message, command: CommandObject | None = None) -> None:
     service = _get_service(message)
     await service.ensure_user(message.from_user.id)  # type: ignore[arg-type]
+    if command and command.args and command.args.startswith(("invite_", "planner_")):
+        await send_web_link(message, command.args)
+        return
     if command and command.args:
         handled = await _handle_share_deep_link(message, command.args)
         if handled:
@@ -232,7 +245,9 @@ async def cmd_admin_users(message: Message, command: CommandObject | None = None
     service = _get_admin_service(message)
     rows = await service.list_users_with_lesson_counts(limit=limit, offset=offset)
     await message.answer(
-        formatters.render_admin_users_with_lesson_counts(rows, limit=max(1, min(limit, 100)), offset=max(offset, 0)),
+        formatters.render_admin_users_with_lesson_counts(
+            rows, limit=max(1, min(limit, 100)), offset=max(offset, 0)
+        ),
         reply_markup=_main_menu(message),
     )
 
@@ -251,8 +266,8 @@ async def cmd_admin_user_schedule(message: Message, command: CommandObject | Non
         await message.answer("Пользователь с таким ID не найден.")
         return
     schedule_service = _get_service(message)
-    settings = _get_settings(message)
-    now = datetime.now(tz=ZoneInfo(settings.default_tz))
+    user = await schedule_service.user_repo.get_or_create(user_id)
+    now = datetime.now(tz=ZoneInfo(user.timezone))
     start_of_week = now - timedelta(days=now.weekday())
     views = await schedule_service.get_week_view(user_id, start_of_week.date())
     await message.answer(
@@ -280,9 +295,7 @@ async def share_scope_chosen(callback: CallbackQuery) -> None:
             f"`{deep_link}`"
         )
     else:
-        link_text = (
-            "Чтобы получать кликабельные ссылки, задайте username для бота в BotFather."
-        )
+        link_text = "Чтобы получать кликабельные ссылки, задайте username для бота в BotFather."
 
     fallback = f"`/start share_{share.token}`"
     scope_label = "уроки и внеурочка" if scope == ShareScope.ALL else "только уроки"
@@ -356,7 +369,9 @@ async def edit_receive_label(message: Message, state: FSMContext) -> None:
     entry_type = DayItemType(entry_type_value)
     service = _get_service(message)
     try:
-        updated = await service.update_entry_label(message.from_user.id, entry_type, int(entry_id), text)  # type: ignore[arg-type]
+        updated = await service.update_entry_label(
+            message.from_user.id, entry_type, int(entry_id), text
+        )  # type: ignore[arg-type]
     except InputValidationError as exc:
         await message.answer("\n".join(exc.errors))
         return
@@ -481,8 +496,8 @@ async def menu_tomorrow(message: Message) -> None:
 
 async def _send_week(message: Message, refresh_menu: bool = False) -> None:
     service = _get_service(message)
-    settings = _get_settings(message)
-    now = datetime.now(tz=ZoneInfo(settings.default_tz))
+    user = await service.user_repo.get_or_create(message.from_user.id)
+    now = datetime.now(tz=ZoneInfo(user.timezone))
     start_of_week = now - timedelta(days=now.weekday())
     views = await service.get_week_view(message.from_user.id, start_of_week.date())  # type: ignore[arg-type]
     reply_markup = _main_menu(message) if refresh_menu else None
@@ -665,3 +680,31 @@ async def extras_confirm_cancel(callback: CallbackQuery, state: FSMContext) -> N
     await state.clear()
     await callback.message.answer("Изменения внеурочки отменены.")
     await callback.answer()
+
+
+async def send_web_link(message: Message, start: str = ""):
+    settings = _get_settings(message)
+    if not settings.webapp_url:
+        await message.answer("Веб-планер ещё не настроен. Пока используйте /today и /week.")
+        return
+    parsed = urlsplit(settings.webapp_url)
+    params = dict(parse_qsl(parsed.query))
+    if start.startswith("invite_"):
+        params["invite"] = start[7:]
+    elif start.startswith("planner_"):
+        params["share"] = start[8:]
+    url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(params), ""))
+    await message.answer(
+        "Расписание, задания и семейные профили — в вашем планере.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Открыть планер", web_app=WebAppInfo(url=url))]
+            ]
+        ),
+    )
+
+
+@router.message(Command("web"))
+@router.message(F.text == "Открыть планер")
+async def cmd_web(message: Message):
+    await send_web_link(message)

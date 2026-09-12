@@ -1,15 +1,54 @@
 from __future__ import annotations
 
-from datetime import date, datetime, time as time_cls, timedelta
+from datetime import date, datetime, timedelta
+from datetime import time as time_cls
+from functools import wraps
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
-from app.domain import EditableEntry, DayItem, DayItemType, DayView, Extra, Lesson, ShareImportResult, ShareScope, ShareToken
+from app.domain import (
+    DayItem,
+    DayItemType,
+    DayView,
+    EditableEntry,
+    Extra,
+    Lesson,
+    ShareImportResult,
+    ShareScope,
+    ShareToken,
+)
 from app.dto import ExtraInput, LessonInput
-from app.repositories import ExtrasRepository, ScheduleRepository, ShareTokenRepository, UserRepository
+from app.repositories import (
+    ExtrasRepository,
+    ScheduleRepository,
+    ShareTokenRepository,
+    UserRepository,
+)
+from app.repositories.base import unit_of_work
 from app.services.errors import InputValidationError, ShareImportError, ShareLinkNotFoundError
 from app.utils import parsing
+
+
+def atomic_schedule(method):
+    @wraps(method)
+    async def wrapped(self, user_id, *args, **kwargs):
+        async with unit_of_work(self.schedule_repo._pool, user_id) as conn:
+            result = await method(self, user_id, *args, **kwargs)
+            from fastapi import HTTPException
+
+            from app.planner.service import PlannerService
+
+            pid = await conn.fetchval(
+                "SELECT id FROM profiles WHERE owner_id=$1 AND is_default", user_id
+            )
+            try:
+                await PlannerService(conn, self.settings).validate_calendar(pid)
+            except HTTPException as exc:
+                raise InputValidationError([str(exc.detail)]) from exc
+            return result
+
+    return wrapped
 
 
 class ScheduleService:
@@ -30,6 +69,7 @@ class ScheduleService:
     async def ensure_user(self, user_id: int) -> None:
         await self.user_repo.get_or_create(user_id)
 
+    @atomic_schedule
     async def set_lessons_for_day(self, user_id: int, weekday: int, raw: str) -> DayView:
         await self.user_repo.get_or_create(user_id)
         self._validate_weekday(weekday)
@@ -46,6 +86,7 @@ class ScheduleService:
         )
         return await self._build_day_view(user_id, weekday)
 
+    @atomic_schedule
     async def set_extras_for_day(self, user_id: int, weekday: int, raw: str) -> DayView:
         await self.user_repo.get_or_create(user_id)
         self._validate_weekday(weekday)
@@ -73,8 +114,32 @@ class ScheduleService:
             localized = target_date.astimezone(timezone)
         else:
             localized = datetime.combine(target_date, time_cls.min, tzinfo=timezone)
-        weekday = localized.isoweekday()
-        return await self._build_day_view(user_id, weekday)
+        target = localized.date()
+        return await self._dated_view(user_id, target)
+
+    async def _dated_view(self, user_id: int, target: date) -> DayView:
+        from app.planner.service import PlannerService
+
+        async with self.schedule_repo.acquire() as conn:
+            pid = await conn.fetchval("SELECT default_profile_id FROM users WHERE id=$1", user_id)
+            service = PlannerService(conn, self.settings)
+            await service.access(user_id, pid)
+            result = await service.day(pid, target)
+        return DayView(
+            weekday=target.isoweekday(),
+            items=[
+                DayItem(
+                    type=DayItemType(e["type"]),
+                    label=e["label"],
+                    start_time=e["start_time"],
+                    end_time=e["end_time"],
+                    location=e.get("location"),
+                    subtitle=e.get("subtitle"),
+                )
+                for e in result["entries"]
+                if not e.get("cancelled")
+            ],
+        )
 
     async def get_week_view(self, user_id: int, week_start: date | datetime) -> dict[int, DayView]:
         await self.user_repo.get_or_create(user_id)
@@ -87,13 +152,14 @@ class ScheduleService:
         for offset in range(7):
             day = start_date + timedelta(days=offset)
             weekday = day.isoweekday()
-            week[weekday] = await self._build_day_view(user_id, weekday)
+            week[weekday] = await self._dated_view(user_id, day)
         return week
 
     async def create_share_link(self, user_id: int, scope: ShareScope):
         await self.user_repo.get_or_create(user_id)
         return await self.share_repo.create(user_id, scope)
 
+    @atomic_schedule
     async def import_shared_schedule(self, target_user_id: int, token: str) -> ShareImportResult:
         share = await self.resolve_share_token(token)
         if share.owner_id == target_user_id:
@@ -106,7 +172,9 @@ class ScheduleService:
         if share.scope == ShareScope.ALL:
             extras_days = await self._copy_extras(share.owner_id, target_user_id)
 
-        return ShareImportResult(scope=share.scope, lessons_days=lessons_days, extras_days=extras_days)
+        return ShareImportResult(
+            scope=share.scope, lessons_days=lessons_days, extras_days=extras_days
+        )
 
     async def resolve_share_token(self, token: str) -> ShareToken:
         share = await self.share_repo.get(token)
@@ -158,6 +226,7 @@ class ScheduleService:
         entries.sort(key=lambda entry: entry.start_time)
         return entries
 
+    @atomic_schedule
     async def create_entry(
         self,
         user_id: int,
@@ -171,8 +240,11 @@ class ScheduleService:
     ) -> EditableEntry:
         await self.user_repo.get_or_create(user_id)
         self._validate_weekday(weekday)
+        self._validate_time_range(start_time_value, end_time_value)
         if not label.strip():
             raise InputValidationError(["Название занятия не может быть пустым."])
+        if len(label.strip()) > 200:
+            raise InputValidationError(["Название не должно превышать 200 символов."])
         if entry_type == DayItemType.LESSON:
             return await self._create_lesson_entry(
                 user_id,
@@ -193,6 +265,7 @@ class ScheduleService:
             subtitle,
         )
 
+    @atomic_schedule
     async def update_entry(
         self,
         user_id: int,
@@ -207,8 +280,11 @@ class ScheduleService:
         subtitle: str | None,
         weekday: int | None = None,
     ) -> EditableEntry:
+        self._validate_time_range(start_time_value, end_time_value)
         if not label.strip():
             raise InputValidationError(["Название занятия не может быть пустым."])
+        if len(label.strip()) > 200:
+            raise InputValidationError(["Название не должно превышать 200 символов."])
         current_type = source_type
         current_weekday: int | None = None
         if source_type == DayItemType.LESSON:
@@ -287,6 +363,7 @@ class ScheduleService:
             subtitle,
         )
 
+    @atomic_schedule
     async def update_entry_label(
         self,
         user_id: int,
@@ -301,6 +378,7 @@ class ScheduleService:
             return await self.schedule_repo.update_subject(entry_id, user_id, label)
         return await self.extras_repo.update_name(entry_id, user_id, label)
 
+    @atomic_schedule
     async def delete_entry(self, user_id: int, entry_type: DayItemType, entry_id: int) -> bool:
         if entry_type == DayItemType.LESSON:
             return await self.schedule_repo.delete_entry(entry_id, user_id)
@@ -325,7 +403,9 @@ class ScheduleService:
             teacher=teacher,
         )
         self._validate_limits(len(lessons) + 1, self.settings.max_lessons_per_day, "уроков")
-        self._validate_overlap([self._lesson_to_input(lesson) for lesson in lessons] + [new_entry], "уроков")
+        self._validate_overlap(
+            [self._lesson_to_input(lesson) for lesson in lessons] + [new_entry], "уроков"
+        )
         created = await self.schedule_repo.insert_entry(
             user_id=user_id,
             weekday=weekday,
@@ -356,7 +436,9 @@ class ScheduleService:
             notes=notes,
         )
         self._validate_limits(len(extras) + 1, self.settings.max_extras_per_day, "внеурочки")
-        self._validate_overlap([self._extra_to_input(extra) for extra in extras] + [new_entry], "внеурочки")
+        self._validate_overlap(
+            [self._extra_to_input(extra) for extra in extras] + [new_entry], "внеурочки"
+        )
         created = await self.extras_repo.insert_entry(
             user_id=user_id,
             weekday=weekday,
@@ -503,6 +585,13 @@ class ScheduleService:
         return combined
 
     @staticmethod
+    def _validate_time_range(start, end):
+        if start.tzinfo or end.tzinfo or end <= start:
+            raise InputValidationError(
+                ["Окончание должно быть позже начала; укажите местное время."]
+            )
+
+    @staticmethod
     def _validate_weekday(weekday: int) -> None:
         if weekday < 1 or weekday > 7:
             raise InputValidationError(["weekday должен быть в диапазоне 1-7"])
@@ -515,7 +604,7 @@ class ScheduleService:
     @staticmethod
     def _validate_overlap(entries: Iterable[LessonInput | ExtraInput], label: str) -> None:
         sorted_entries = sorted(entries, key=lambda item: item.start_time)  # type: ignore[arg-type]
-        for prev, current in zip(sorted_entries, sorted_entries[1:]):
+        for prev, current in zip(sorted_entries, sorted_entries[1:], strict=False):
             if current.start_time < prev.end_time:
                 raise InputValidationError(
                     [
