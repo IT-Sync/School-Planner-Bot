@@ -20,6 +20,7 @@ const state = {
 };
 let dirty = false;
 let saving = false;
+let confirmationOpen = false;
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -364,12 +365,54 @@ function openSheet(title, content) {
   tg?.BackButton?.show();
 }
 
-function closeSheet(force = false) {
-  if (saving) return;
-  if (!force && dirty && !window.confirm('Закрыть без сохранения изменений?')) return;
-  $('sheet').close();
+function askConfirmation(message, confirmLabel = 'Продолжить') {
+  if (confirmationOpen) return Promise.resolve(false);
+  confirmationOpen = true;
+  return new Promise(resolve => {
+    const finish = answer => {
+      overlay.remove();
+      confirmationOpen = false;
+      resolve(answer);
+    };
+    const cancel = el('button', {
+      type: 'button',
+      class: 'button secondary',
+      onclick: () => finish(false)
+    }, 'Остаться');
+    const confirm = el('button', {
+      type: 'button',
+      class: 'button danger',
+      onclick: () => finish(true)
+    }, confirmLabel);
+    const overlay = el('div', {
+      class: 'confirm-overlay',
+      role: 'alertdialog',
+      'aria-modal': 'true',
+      'aria-labelledby': 'confirm-title',
+      onkeydown: event => {
+        if (event.key === 'Escape') finish(false);
+      }
+    }, el('div', {
+      class: 'confirm-card'
+    }, el('span', {
+      class: 'eyebrow'
+    }, 'Несохранённые изменения'), el('h3', {
+      id: 'confirm-title'
+    }, message), el('div', {
+      class: 'confirm-actions'
+    }, cancel, confirm)));
+    $('sheet').append(overlay);
+    cancel.focus();
+  });
+}
+
+async function closeSheet(force = false) {
+  if (saving) return false;
+  if (!force && dirty && !await askConfirmation('Закрыть без сохранения изменений?', 'Закрыть')) return false;
+  if ($('sheet').open) $('sheet').close();
   dirty = false;
   tg?.BackButton?.hide();
+  return true;
 }
 
 function formShell(onSubmit) {
@@ -835,7 +878,7 @@ function renderSettings() {
   }, profilePanel, tools)));
 }
 async function switchProfile(pid) {
-  if (dirty && !window.confirm('Переключить профиль без сохранения?')) return;
+  if (dirty && !await askConfirmation('Переключить профиль без сохранения?', 'Переключить')) return;
   state.pid = pid;
   dirty = false;
   closeSheet(true);
@@ -1169,9 +1212,9 @@ async function boot() {
     }
   });
   $('profile-button').addEventListener('click', profilesSheet);
-  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', async () => {
     if (state.week) {
-      if (dirty && !window.confirm('Перейти без сохранения изменений?')) return;
+      if (dirty && !await askConfirmation('Перейти без сохранения изменений?', 'Перейти')) return;
       dirty = false;
       state.view = b.dataset.view;
       render();

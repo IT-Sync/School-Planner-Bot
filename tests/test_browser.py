@@ -79,6 +79,24 @@ async def test_web_workflows(width):
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(base)
+            assert (
+                await page.locator('link[rel="stylesheet"]').get_attribute("href")
+                == "/static/planner-v2.css?v=20260912.1"
+            )
+            assert (
+                await page.evaluate("getComputedStyle(document.body).backgroundColor")
+                == "rgb(243, 246, 251)"
+            )
+            stylesheet = await page.request.get(f"{base}/static/planner-v2.css?v=20260912.1")
+            assert stylesheet.ok
+            assert "text/css" in stylesheet.headers["content-type"]
+            assert "immutable" in stylesheet.headers["cache-control"]
+            await page.get_by_role("button", name="Поделиться расписанием").click()
+            await page.get_by_role("checkbox", name="Вс").uncheck()
+            await page.get_by_role("button", name="Закрыть окно").click()
+            await page.get_by_role("heading", name="Закрыть без сохранения изменений?").wait_for()
+            await page.get_by_role("button", name="Закрыть", exact=True).click()
+            await page.locator("dialog").wait_for(state="hidden")
             await page.get_by_role("button", name="+ Добавить занятие", exact=True).click()
             await page.locator("[name=label]").fill("Математика")
             await page.get_by_role("button", name="Сохранить", exact=True).click()

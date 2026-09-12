@@ -3,17 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#f5f3eb" />
+  <meta name="theme-color" content="#f3f6fb" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <meta name="description" content="Уроки, кружки и домашние задания — спокойный план школьной недели для всей семьи." />
   <title>Школьный планер</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <!-- A tiny fallback prevents an unstyled page if a Telegram WebView restores
+       an old asset response. The versioned stylesheet supplies the full UI. -->
+  <style>
+    :root{color-scheme:light dark;font-family:"Avenir Next","Segoe UI",sans-serif;background:#f4f7fb;color:#172033}
+    *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;line-height:1.5}button,input,select,textarea{font:inherit}
+    .skip-link{position:fixed;left:-999px}.app-shell{width:min(1240px,100%);margin:auto;padding:24px clamp(16px,4vw,48px)}
+    .app-header,.main-nav,.profile-button,.brand{display:flex;align-items:center}.app-header{gap:20px}.brand{gap:10px;color:inherit;text-decoration:none}
+    .brand-mark{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#3659e3;color:#fff;font-weight:800}
+    .profile-button{margin-left:auto;gap:8px;padding:7px 12px;border:1px solid #dce3ef;border-radius:999px}.main-nav{gap:8px;margin:20px 0}
+    .nav-item{min-height:44px;padding:0 14px;border:0;border-radius:12px}.loading-panel{min-height:50vh;display:grid;place-content:center;text-align:center}
+    .app-footer{display:flex;justify-content:space-between;margin-top:40px}.sheet{max-width:620px;width:calc(100% - 24px)}
+    @media(max-width:720px){.app-shell{padding:16px 14px 96px}.header-note,.nav-caption,.app-footer{display:none}.main-nav{position:fixed;z-index:20;inset:auto 10px 10px;justify-content:space-around;padding:8px;background:#fff;border-radius:18px}.nav-item{flex:1;justify-content:center}.profile-button #profile-name{max-width:110px;overflow:hidden;text-overflow:ellipsis}}
+  </style>
+  <link rel="stylesheet" href="/static/planner-v2.css?v=20260912.1" />
 </head>
 <body>
   <a href="#main" class="skip-link">К содержимому</a>
   <div id="app" class="app-shell">
     <header class="app-header">
       <a class="brand" href="/" aria-label="Школьный планер — главная"><span class="brand-mark" aria-hidden="true">ш.</span><span>школьный<br /><strong>планер</strong></span></a>
-      <div class="header-note">Меньше суеты.<br />Больше времени на жизнь.</div>
+      <div class="header-note">Учёба, задания и планы<br />в одном спокойном ритме.</div>
       <button id="profile-button" class="profile-button" aria-label="Выбрать профиль" disabled><span id="profile-avatar" class="avatar">Ш</span><span id="profile-name">Загрузка…</span><span aria-hidden="true">⌄</span></button>
     </header>
     <nav class="main-nav" aria-label="Разделы планера">
@@ -31,6 +46,6 @@
     <div id="sheet-body" class="sheet-body"></div>
   </dialog>
   <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
-  <script type="module" src="/static/app.js" defer></script>
+  <script src="/static/planner-v2.js?v=20260912.1" defer></script>
 </body>
 </html>

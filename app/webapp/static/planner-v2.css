@@ -2165,3 +2165,707 @@ input[type=checkbox] {
     display: none
   }
 }
+
+/* Modern product skin. Kept as a final layer so every legacy workflow retains
+   its layout while sharing one compact, touch-friendly visual system. */
+:root {
+  --bg: #f3f6fb;
+  --paper: #ffffff;
+  --ink: #172033;
+  --muted: #697386;
+  --line: #dfe5ef;
+  --accent: #3659e3;
+  --accent-soft: #e9eeff;
+  --yellow: #f4c95d;
+  --yellow-soft: #fff7dc;
+  --red: #d24747;
+  --red-soft: #fff0ef;
+  --blue: #147d92;
+  --radius: 20px;
+  --shadow: 0 16px 44px rgba(31, 48, 83, .1);
+  color-scheme: light;
+  font-family: "Avenir Next", Avenir, "Segoe UI", Ubuntu, sans-serif
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 7% 0%, rgba(54, 89, 227, .1), transparent 30rem),
+    radial-gradient(circle at 96% 28%, rgba(20, 157, 146, .08), transparent 26rem),
+    var(--bg);
+  color: var(--ink);
+  font-size: 15px
+}
+
+h1,
+h2,
+.display,
+.brand-mark,
+.hero-stamp,
+.focus-time,
+.stats-line strong,
+.day-button strong {
+  font-family: "Avenir Next", Avenir, "Segoe UI", Ubuntu, sans-serif
+}
+
+h1,
+h2 {
+  letter-spacing: -.04em;
+  font-weight: 750
+}
+
+h1 {
+  font-size: clamp(40px, 5vw, 62px);
+  line-height: 1.02
+}
+
+h2 {
+  font-size: clamp(24px, 3vw, 34px)
+}
+
+.app-shell {
+  max-width: 1280px;
+  padding: 22px 40px 0
+}
+
+.app-header {
+  min-height: 62px;
+  padding-bottom: 14px
+}
+
+.brand {
+  letter-spacing: -.02em
+}
+
+.brand strong {
+  font-size: 19px;
+  letter-spacing: -.03em
+}
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  transform: none;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #3659e3, #158f91);
+  box-shadow: 0 10px 24px rgba(54, 89, 227, .25);
+  font-size: 20px;
+  font-weight: 800
+}
+
+.header-note {
+  margin-left: 6px;
+  font-size: 12px;
+  line-height: 1.45
+}
+
+.profile-button {
+  min-height: 46px;
+  border-color: rgba(211, 220, 234, .9);
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 7px 20px rgba(32, 46, 72, .06);
+  backdrop-filter: blur(14px);
+  transition: transform .18s ease, box-shadow .18s ease
+}
+
+.profile-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(32, 46, 72, .1)
+}
+
+.avatar {
+  background: var(--accent-soft);
+  color: var(--accent)
+}
+
+.main-nav {
+  width: fit-content;
+  gap: 4px;
+  padding: 5px;
+  margin: 7px 0 30px;
+  border: 1px solid rgba(217, 225, 237, .9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: 0 8px 24px rgba(35, 50, 80, .05);
+  backdrop-filter: blur(14px)
+}
+
+.nav-item {
+  min-height: 42px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 11px;
+  transition: background .18s ease, color .18s ease, transform .18s ease
+}
+
+.nav-item:hover {
+  background: var(--accent-soft)
+}
+
+.nav-item.active {
+  border: 0;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(23, 32, 51, .18)
+}
+
+.nav-caption {
+  position: absolute;
+  right: max(40px, calc((100vw - 1200px) / 2));
+  padding-right: 0;
+  pointer-events: none
+}
+
+.count {
+  background: var(--yellow);
+  color: #3d3217
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: .13em
+}
+
+.hero {
+  min-height: 160px;
+  margin: 0 0 24px;
+  padding: 8px 8px 8px 4px
+}
+
+.hero-copy p {
+  margin-top: 12px;
+  color: var(--muted)
+}
+
+.hero-stamp {
+  width: 104px;
+  height: 104px;
+  border: 0;
+  border-radius: 30px;
+  transform: rotate(4deg);
+  background: linear-gradient(145deg, var(--accent), #168e91);
+  color: #fff;
+  box-shadow: 0 18px 38px rgba(54, 89, 227, .22)
+}
+
+.workspace {
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px
+}
+
+.panel,
+.task-card,
+.settings-panel,
+.week-card {
+  border: 1px solid rgba(216, 224, 236, .92);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 10px 32px rgba(30, 45, 74, .055);
+  backdrop-filter: blur(14px)
+}
+
+.agenda-panel {
+  padding: 22px
+}
+
+.agenda-toolbar {
+  margin-bottom: 18px
+}
+
+.icon-button,
+.small-button,
+.segmented {
+  border-color: var(--line);
+  background: #f6f8fc
+}
+
+.icon-button:hover,
+.small-button:hover {
+  background: var(--accent-soft);
+  color: var(--accent)
+}
+
+.segmented {
+  padding: 4px;
+  border-radius: 13px
+}
+
+.segmented button {
+  border-radius: 9px
+}
+
+.segmented .active {
+  background: #fff;
+  color: var(--accent);
+  box-shadow: 0 4px 12px rgba(34, 48, 78, .1)
+}
+
+.week-strip {
+  gap: 5px;
+  padding: 6px;
+  border: 0;
+  border-radius: 17px;
+  background: #f5f7fb
+}
+
+.day-button {
+  min-width: 0;
+  border-radius: 13px;
+  transition: transform .16s ease, background .16s ease
+}
+
+.day-button:hover {
+  transform: translateY(-2px)
+}
+
+.day-button.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 9px 20px rgba(54, 89, 227, .24)
+}
+
+.day-dot {
+  background: var(--yellow)
+}
+
+.day-heading {
+  margin-top: 22px
+}
+
+.timeline::before {
+  background: linear-gradient(var(--accent-soft), var(--line), transparent)
+}
+
+.event-card {
+  border-color: var(--line);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 7px 18px rgba(31, 47, 79, .045);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  border-color: #b8c6e8;
+  box-shadow: 0 12px 26px rgba(31, 47, 79, .09)
+}
+
+.event-card.lesson {
+  border-left-color: var(--accent)
+}
+
+.event-card.extra {
+  border-left-color: #0f9b8e
+}
+
+.event-card.current {
+  background: linear-gradient(100deg, var(--accent-soft), #fff 62%)
+}
+
+.badge {
+  border-radius: 999px;
+  font-weight: 750
+}
+
+.badge.lesson {
+  background: var(--accent-soft);
+  color: var(--accent)
+}
+
+.badge.extra {
+  background: #e2f6f2;
+  color: #08756c
+}
+
+.button {
+  min-height: 46px;
+  border-radius: 13px;
+  background: var(--accent);
+  box-shadow: 0 9px 20px rgba(54, 89, 227, .2);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 12px 25px rgba(54, 89, 227, .25)
+}
+
+.button.secondary {
+  border-color: #ccd6e7;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: none
+}
+
+.button.danger {
+  background: var(--red)
+}
+
+.focus-card {
+  border: 0;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(90, 222, 205, .28), transparent 8rem),
+    #172033;
+  color: #fff;
+  box-shadow: 0 18px 38px rgba(23, 32, 51, .2)
+}
+
+.focus-card .eyebrow,
+.focus-card p,
+.focus-bottom {
+  color: #b9c8e5
+}
+
+.sidebar-section {
+  border-radius: 20px
+}
+
+.stats-line strong {
+  letter-spacing: -.045em;
+  font-weight: 750
+}
+
+.task-card,
+.settings-panel {
+  border-radius: 18px
+}
+
+input,
+select,
+textarea {
+  border-color: #ccd6e7;
+  border-radius: 12px;
+  background: #fbfcff
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(54, 89, 227, .11)
+}
+
+.sheet {
+  border: 1px solid rgba(214, 222, 235, .9);
+  border-radius: 26px;
+  background: var(--paper);
+  box-shadow: 0 28px 90px rgba(18, 28, 49, .28)
+}
+
+.sheet::backdrop {
+  background: rgba(19, 29, 48, .55);
+  backdrop-filter: blur(5px)
+}
+
+.toast {
+  border-radius: 15px;
+  background: #172033;
+  box-shadow: 0 15px 36px rgba(19, 29, 48, .3)
+}
+
+.loading-panel {
+  color: var(--muted)
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e8edf6 25%, #f7f9fc 45%, #e8edf6 65%);
+  background-size: 220% 100%
+}
+
+.app-footer {
+  color: var(--muted)
+}
+
+[data-theme=dark] {
+  --bg: #0d121d;
+  --paper: #151c29;
+  --ink: #edf2ff;
+  --muted: #98a5ba;
+  --line: #2b3546;
+  --accent: #7894ff;
+  --accent-soft: #202e58;
+  --yellow-soft: #43381d;
+  --red-soft: #432527;
+  color-scheme: dark
+}
+
+[data-theme=dark] body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(87, 119, 244, .18), transparent 30rem),
+    radial-gradient(circle at 98% 24%, rgba(15, 155, 142, .12), transparent 24rem),
+    var(--bg)
+}
+
+[data-theme=dark] .main-nav,
+[data-theme=dark] .profile-button,
+[data-theme=dark] .panel,
+[data-theme=dark] .task-card,
+[data-theme=dark] .settings-panel,
+[data-theme=dark] .week-card,
+[data-theme=dark] .event-card,
+[data-theme=dark] .button.secondary,
+[data-theme=dark] .segmented .active {
+  background: rgba(21, 28, 41, .94);
+  border-color: var(--line)
+}
+
+[data-theme=dark] .week-strip,
+[data-theme=dark] .icon-button,
+[data-theme=dark] .small-button,
+[data-theme=dark] .segmented,
+[data-theme=dark] input,
+[data-theme=dark] select,
+[data-theme=dark] textarea {
+  background: #101724;
+  border-color: var(--line)
+}
+
+[data-theme=dark] .nav-item.active {
+  background: #edf2ff;
+  color: #172033
+}
+
+[data-theme=dark] .event-card.current {
+  background: linear-gradient(100deg, #202e58, #151c29 62%)
+}
+
+@media(max-width:960px) {
+  .app-shell {
+    padding-inline: 22px
+  }
+
+  .workspace {
+    grid-template-columns: 1fr
+  }
+
+  .sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .focus-card {
+    grid-column: 1/-1
+  }
+}
+
+@media(max-width:720px) {
+  body {
+    font-size: 14px;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom))
+  }
+
+  .app-shell {
+    padding: max(13px, env(safe-area-inset-top)) 14px 20px
+  }
+
+  .app-header {
+    min-height: 54px;
+    gap: 10px;
+    padding: 0
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    font-size: 17px
+  }
+
+  .brand strong {
+    font-size: 17px
+  }
+
+  .profile-button {
+    min-height: 42px;
+    max-width: 52%;
+    padding: 4px 10px 4px 4px
+  }
+
+  .profile-button #profile-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+  }
+
+  .main-nav {
+    position: fixed;
+    z-index: 50;
+    right: 10px;
+    bottom: max(9px, env(safe-area-inset-bottom));
+    left: 10px;
+    width: auto;
+    margin: 0;
+    padding: 7px;
+    justify-content: space-between;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 18px 46px rgba(22, 34, 58, .2)
+  }
+
+  .nav-item {
+    flex: 1;
+    min-height: 51px;
+    padding: 4px 7px;
+    border-radius: 14px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    font-size: 10px
+  }
+
+  .nav-icon {
+    font-size: 17px;
+    line-height: 1
+  }
+
+  [data-theme=dark] .main-nav {
+    background: rgba(21, 28, 41, .96)
+  }
+
+  .hero {
+    min-height: 126px;
+    margin: 12px 0 12px;
+    padding: 0
+  }
+
+  h1 {
+    max-width: 330px;
+    font-size: clamp(34px, 10vw, 44px)
+  }
+
+  .hero-copy p {
+    margin-top: 8px;
+    font-size: 13px
+  }
+
+  .agenda-panel {
+    padding: 13px;
+    border-radius: 18px
+  }
+
+  .agenda-toolbar {
+    gap: 8px
+  }
+
+  .date-tools {
+    gap: 4px
+  }
+
+  .small-button,
+  .icon-button {
+    min-height: 40px
+  }
+
+  .week-strip {
+    gap: 2px;
+    margin-inline: 0;
+    padding: 4px
+  }
+
+  .day-button {
+    min-height: 62px;
+    padding: 6px 2px;
+    border-radius: 11px
+  }
+
+  .day-button strong {
+    font-size: 18px
+  }
+
+  .day-heading {
+    align-items: flex-start;
+    gap: 8px
+  }
+
+  .day-heading h2 {
+    font-size: 23px
+  }
+
+  .event {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 8px
+  }
+
+  .event-card {
+    min-height: 78px;
+    padding: 13px
+  }
+
+  .sidebar {
+    grid-template-columns: 1fr
+  }
+
+  .focus-card {
+    border-radius: 20px
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: none;
+    max-height: calc(var(--viewport-height, 100vh) - 8px);
+    margin: auto 0 0;
+    border-radius: 24px 24px 0 0
+  }
+}
+
+/* Final typography and navigation details for the product skin. */
+.nav-caption {
+  display: none;
+}
+
+.sidebar-section h3,
+.week-card h3,
+.day-heading h2 {
+  font-family: "Avenir Next", "Segoe UI", Ubuntu, sans-serif;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+.confirm-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(8px);
+}
+
+.confirm-card {
+  width: min(100%, 430px);
+  padding: 26px;
+  border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: 24px;
+  background: var(--paper);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .28);
+}
+
+.confirm-card h3 {
+  margin: 8px 0 24px;
+  color: var(--ink);
+  font: 750 22px/1.25 "Avenir Next", "Segoe UI", Ubuntu, sans-serif;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .confirm-overlay {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .confirm-card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .confirm-actions .button {
+    flex: 1;
+  }
+}
