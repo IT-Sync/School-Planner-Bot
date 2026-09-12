@@ -24,3 +24,5 @@ scripts
 docs
 image.png
 pikabu_article.md
+
+compose.keep-db.json

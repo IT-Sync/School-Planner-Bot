@@ -38,3 +38,5 @@ playwright-report/
 # OS files
 .DS_Store
 Thumbs.db
+
+compose.keep-db.json
