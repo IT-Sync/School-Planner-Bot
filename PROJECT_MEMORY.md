@@ -26,7 +26,7 @@ No feature is currently marked in progress. Planned and unfinished work is autho
 
 - Python 3.11+; Docker image uses Python 3.12 slim.
 - aiogram 3.31, FastAPI 0.141, asyncpg 0.31, Pydantic 2.13, Uvicorn 0.52.
-- PostgreSQL 16 in the repository's default Compose topology; current production intentionally remains on PostgreSQL 15.
+- PostgreSQL 16 in both the repository's default Compose topology and production.
 - Plain HTML/CSS/JavaScript frontend with no Node build step.
 - pytest, Playwright Chromium, and Ruff; GitHub Actions CI.
 
@@ -65,7 +65,7 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
-Automated local backups and restore verification are deployed. Off-host replication/alerting needs a destination, and the PostgreSQL 16 production cutover still needs an approved maintenance window. See `TODO.md`.
+Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -104,8 +104,9 @@ Automated local backups and restore verification are deployed. Off-host replicat
 - A single image supplies `migrate`, `bot`, and `webapp`. Default Compose starts PostgreSQL, waits for it, runs migrations once, then starts bot and webapp as an unprivileged user with dropped capabilities.
 - CI validates lint/format, migrations, integration/browser tests, and Docker build. It does not deploy.
 - Current production was last verified on 2026-09-13 at application commit `e9e6375`. The public URL is `https://gitflic.it-sync.ru/?v=20260913.1`, and the checkout is `/opt/pybot/School-Planner-Bot`.
-- Current production intentionally preserves the original `school-planner-bot` Compose project and PostgreSQL 15 container with its `pgdata` bind mount through an ignored `compose.keep-db.json`. Every production Compose command must include `-p school-planner-bot -f docker-compose.yml -f compose.keep-db.json`.
-- `school-planner-backup.timer` is enabled and runs daily around 02:15 Europe/Moscow with randomized delay. Backups are currently local under `backups/automatic`; the first checksum and PostgreSQL 16 restore rehearsal passed on 2026-09-13. Off-host `BACKUP_REMOTE` and external `BACKUP_HEALTHCHECK_URL` are not yet configured.
+- Current production uses PostgreSQL 16.15 in the original `school-planner-bot` Compose project. Its ignored `compose.keep-db.json` preserves the established host port and points at external volume `school-planner-bot-postgres16-data-20260913T065348Z`. Every production Compose command must include `-p school-planner-bot -f docker-compose.yml -f compose.keep-db.json`.
+- The 2026-09-13 logical cutover preserved PostgreSQL 15 rollback container `school-planner-db-pg15-rollback-20260913T065348Z` and untouched bind directory `/opt/pybot/School-Planner-Bot/pgdata`. Cutover artifacts and instructions are mode-600 files under `backups/cutover-20260913T065348Z`; do not delete them until the retention decision is explicit.
+- `school-planner-backup.timer` is enabled and runs daily around 02:15 Europe/Moscow with randomized delay. Backups are currently local under `backups/automatic`; pre-cutover and post-cutover dumps passed checksum, count, migration, and PostgreSQL 16 restore checks on 2026-09-13. Off-host `BACKUP_REMOTE` and external `BACKUP_HEALTHCHECK_URL` are not yet configured.
 - Follow `docs/safe-update.md` for upgrades and `docs/rescue-old-containers.md` if a second empty Compose stack appears. Never attach PostgreSQL 15 data files directly to PostgreSQL 16.
 
 ## Known issues
@@ -128,15 +129,16 @@ Automated local backups and restore verification are deployed. Off-host replicat
 - Replaced blocking unsaved-change confirmation with an in-app asynchronous dialog.
 - Fixed invisible text on destructive buttons and released frontend assets as `20260913.1`.
 - Added daily verified backup tooling/systemd units and passed a PostgreSQL 15 dump restore rehearsal on PostgreSQL 16.
+- Migrated production from PostgreSQL 15.13 to 16.15 by logical dump/restore into a separate external volume; retained the stopped PostgreSQL 15 environment for rollback.
+- Hardened the restore rehearsal wait so it cannot mistake PostgreSQL's temporary bootstrap server for the final ready server.
 - Added family profiles, roles, dated events, tasks/files, holidays, sharing, bells, ICS, and reminders.
 - Added transactional migrations, PostgreSQL 15 rescue/update runbooks, CI, browser testing, and hardened Docker runtime defaults.
 
 ## Current priorities
 
 1. Configure the prepared backup job with an off-host rsync destination and external missing-run alert.
-2. Approve a maintenance window and execute the rehearsed production PostgreSQL 15 to 16 cutover.
-3. Fix query-safe fallback invite/share URL generation and automate frontend asset fingerprinting.
-4. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
+2. Fix query-safe fallback invite/share URL generation and automate frontend asset fingerprinting.
+3. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
 
 ## Next recommended steps
 
@@ -150,7 +152,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 - Profile lock order and transaction boundaries used by API, imports, invitations, and legacy commands.
 - Telegram authentication header contract, token hashing, role semantics, or attachment download authorization.
 - Reminder claim-before-send semantics without an explicit duplicate/delivery tradeoff decision.
-- Production Compose project name, ignored database override, PostgreSQL version, or `pgdata` mount.
+- Production Compose project name, ignored database override, PostgreSQL 16 external volume, or retained PostgreSQL 15 rollback artifacts.
 - Public asset names/version query and compatibility shims while older Telegram clients may cache HTML.
 
 ## Memory maintenance notes

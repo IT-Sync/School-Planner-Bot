@@ -30,13 +30,23 @@ docker run -d --rm --name "$container" \
   -e POSTGRES_USER=planner -e POSTGRES_PASSWORD=rehearsal-only -e POSTGRES_DB=planner \
   "$POSTGRES16_IMAGE" >/dev/null
 
-for _ in {1..30}; do
-  if docker exec "$container" pg_isready -U planner -d planner >/dev/null 2>&1; then
+# A fresh official image briefly starts a bootstrap server, stops it after
+# CREATE DATABASE, and only then starts the final server. Waiting on
+# pg_isready alone can race with that intentional shutdown.
+ready=0
+for _ in {1..60}; do
+  if docker logs "$container" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up" \
+    && docker exec "$container" pg_isready -U planner -d planner >/dev/null 2>&1; then
+    ready=1
     break
   fi
-  sleep 1
+  sleep 0.5
 done
-docker exec "$container" pg_isready -U planner -d planner >/dev/null
+if [[ "$ready" != "1" ]]; then
+  docker logs --tail 100 "$container" >&2
+  echo "PostgreSQL 16 rehearsal container did not finish initialization" >&2
+  exit 1
+fi
 docker exec -i "$container" pg_restore -U planner -d planner --no-owner --exit-on-error <"$dump"
 
 docker exec -i "$container" psql -U planner -d planner -At -F '|' >"$actual" <<'SQL'
@@ -59,4 +69,3 @@ diff -u "$expected" "$actual"
 docker exec "$container" psql -U planner -d planner -v ON_ERROR_STOP=1 -Atc \
   "SELECT count(*) FROM planner_migrations; SELECT planner_ensure_profile(id) FROM users LIMIT 1;"
 printf 'PostgreSQL 16 restore rehearsal passed for %s\n' "$dump"
-

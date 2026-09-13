@@ -4,7 +4,7 @@ Last updated: 2026-09-13
 
 ## In progress
 
-Off-host backup replication/alerting and the PostgreSQL 16 production cutover remain active operational work.
+Off-host backup replication and missing-run alerting remain active operational work.
 
 ## High priority
 
@@ -12,11 +12,6 @@ Off-host backup replication/alerting and the PostgreSQL 16 production cutover re
   - Relevant docs: `docs/automated-backups.md`; configuration: `/etc/school-planner-backup.conf` on production.
   - Completed 2026-09-13: daily systemd timer, verified local custom-format dump, checksum/count sidecars, and successful PostgreSQL 16 restore drill.
   - Remaining input: a restricted `user@host:/path` destination and optionally a healthcheck URL. Set `BACKUP_REQUIRE_REMOTE=1` after configuring it.
-
-- [ ] Approve a maintenance window and execute the production PostgreSQL 15 to 16 logical cutover.
-  - Relevant docs: `docs/postgres-16-migration.md`, `docs/safe-update.md`.
-  - Completed 2026-09-13: migration plan and isolated restore rehearsal from production PostgreSQL 15.13 into PostgreSQL 16 passed with matching control counts.
-  - Production remains safely on the original PostgreSQL 15 container. Preserve it for rollback and never reuse its data directory with PostgreSQL 16.
 
 ## Medium priority
 

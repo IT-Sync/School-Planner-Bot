@@ -185,7 +185,7 @@ Default `docker-compose.yml` defines:
 
 The shared application image runs as UID/GID 10001, drops Linux capabilities, enables `no-new-privileges`, uses Docker init, and rotates JSON logs.
 
-Current production differs intentionally: it retains PostgreSQL 15 and the original bind-mounted `pgdata` under Compose project `school-planner-bot` through ignored `compose.keep-db.json`. The public Mini App currently reaches the webapp through an external proxy. See `PROJECT_MEMORY.md` and operator runbooks for the verified deployment state.
+Current production uses PostgreSQL 16 in Compose project `school-planner-bot`. The ignored `compose.keep-db.json` preserves established production port mappings and binds the database service to an explicitly named external Docker volume. The prior PostgreSQL 15 container configuration and bind-mounted `pgdata` are retained offline for rollback. The public Mini App reaches the webapp through an external proxy. See `PROJECT_MEMORY.md` and operator runbooks for exact verified identifiers.
 
 The backup timer is installed on the production VM. Local verified dumps are active; off-host rsync and external missing-run monitoring remain configuration work.
 
@@ -198,7 +198,7 @@ The backup timer is installed on the production VM. Local verified dumps are act
 5. Recreate only `bot` and `webapp`; verify that the database container ID did not change.
 6. Check readiness, logs, record counts, public assets, and user flows.
 
-The current PostgreSQL 15 data directory must never be mounted into PostgreSQL 16. A version upgrade requires logical dump/restore into a new database and explicit cutover.
+The retained PostgreSQL 15 data directory must never be mounted into PostgreSQL 16. The completed production upgrade used logical dump/restore into a separate Docker volume and retained the old directory only for rollback.
 
 ## CI/CD
 
@@ -222,4 +222,4 @@ The current PostgreSQL 15 data directory must never be mounted into PostgreSQL 1
 
 ## Current architecture vs planned architecture
 
-No replacement architecture is approved. PostgreSQL 16 restore compatibility is rehearsed, but production cutover is pending. Potential changes tracked in `TODO.md` include off-host backup configuration, automated deployment, asset fingerprinting, and possible durable FSM/object storage.
+No replacement architecture is approved. Production and CI now run PostgreSQL 16. Potential changes tracked in `TODO.md` include off-host backup configuration, automated deployment, asset fingerprinting, and possible durable FSM/object storage.
