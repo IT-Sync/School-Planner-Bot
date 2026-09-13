@@ -223,4 +223,4 @@ The retained PostgreSQL 15 data directory must never be mounted into PostgreSQL 
 
 ## Current architecture vs planned architecture
 
-No replacement architecture is approved. Production and CI now run PostgreSQL 16. Potential changes tracked in `TODO.md` include off-host backup configuration and possible object storage. Asset fingerprinting, durable FSM, and the deployment script are implemented locally; production rollout is pending.
+No replacement architecture is approved. Production and CI now run PostgreSQL 16. Potential changes tracked in `TODO.md` include off-host backup configuration and possible object storage. Asset fingerprinting, durable FSM, and the deployment script are deployed in v2.1.0. This rollout used a manually verified off-host dump copy and the explicit local-backup exception; daily off-host scheduling is still pending.

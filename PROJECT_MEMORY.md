@@ -20,7 +20,7 @@ Implemented:
 - Integration and real-browser tests in GitHub Actions.
 - Daily local PostgreSQL backups with archive/checksum/count validation and an isolated PostgreSQL 16 restore rehearsal.
 
-Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes have not been deployed to production. Planned and unfinished work is authoritative in `TODO.md`.
+Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes are deployed to production at application commit `b6b858c` (tag `v2.1.0`); GitHub publication is awaiting write credentials. Planned and unfinished work is authoritative in `TODO.md`.
 
 ## Technology stack
 
@@ -65,7 +65,7 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
-Release v2.1.0 publication and production rollout are in progress. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
+Release v2.1.0 production rollout is complete; GitHub publication is awaiting write credentials. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -83,7 +83,7 @@ Release v2.1.0 publication and production rollout are in progress. Automated loc
 - The repository exposes the webapp on loopback `${WEBAPP_PORT:-11002}` by default. PostgreSQL is internal to Compose in a new installation.
 - Production Mini App access requires valid Telegram `initData` in `X-Telegram-Init-Data`; query-string credentials are rejected. Development fallback identity is forbidden when `APP_ENV=production`.
 - Integration tests truncate `users CASCADE` and must only use a disposable database whose name ends in `_test`.
-- Restart the web process after changing frontend files so content hashes and templates reload together. Production last verified asset release remains `20260913.1`; local code generates hashes automatically.
+- Restart the web process after changing frontend files so content hashes and templates reload together. Production now generates hashes automatically: CSS `794b88c6aec37c2f`, JS `01a0ec74d69a309e` for v2.1.0.
 
 ## External integrations
 
@@ -103,11 +103,12 @@ Release v2.1.0 publication and production rollout are in progress. Automated loc
 
 - A single image supplies `migrate`, `bot`, and `webapp`. Default Compose starts PostgreSQL, waits for it, runs migrations once, then starts bot and webapp as an unprivileged user with dropped capabilities.
 - CI validates lint/format, migrations, integration/browser tests, and Docker build. It does not deploy.
-- Current production was last verified on 2026-09-13 at application commit `e9e6375`. The public URL is `https://gitflic.it-sync.ru/?v=20260913.1`, and the checkout is `/opt/pybot/School-Planner-Bot`.
+- Current production was last verified on 2026-09-13 at application commit `b6b858c` (`v2.1.0`, package/API version `2.1.0`). The public URL is `https://gitflic.it-sync.ru/`, and the checkout is `/opt/pybot/School-Planner-Bot`.
 - Production SSH: `alexk@weapp01.it-sync.hl`; run checkout and Docker operations through sudo. Do not store authentication material in project memory.
 - Current production uses PostgreSQL 16.15 in the original `school-planner-bot` Compose project. Its ignored `compose.keep-db.json` preserves the established host port and points at external volume `school-planner-bot-postgres16-data-20260913T065348Z`. Every production Compose command must include `-p school-planner-bot -f docker-compose.yml -f compose.keep-db.json`.
 - The 2026-09-13 logical cutover preserved PostgreSQL 15 rollback container `school-planner-db-pg15-rollback-20260913T065348Z` and untouched bind directory `/opt/pybot/School-Planner-Bot/pgdata`. Cutover artifacts and instructions are mode-600 files under `backups/cutover-20260913T065348Z`; do not delete them until the retention decision is explicit.
 - `school-planner-backup.timer` is enabled and runs daily around 02:15 Europe/Moscow with randomized delay. Backups are currently local under `backups/automatic`; pre-cutover and post-cutover dumps passed checksum, count, migration, and PostgreSQL 16 restore checks on 2026-09-13. Off-host `BACKUP_REMOTE` and external `BACKUP_HEALTHCHECK_URL` are not yet configured.
+- v2.1.0 deployment completed with `scripts/deploy-production.sh --allow-local-backup` after a verified manual off-host backup; transfer to the local ignored backup directory was explicitly authorized. Final pre-migration dump: `backups/automatic/planner-20260913T145509Z.dump`; matching copy under `/projects/School-Planner-Bot/backups/releases/v2.1.0/` on the development host. SHA-256 and PostgreSQL 16 restore rehearsal passed. The database container remained `6173c1ea2681`; migration `0003` is applied. Prior application image is retained as `school-planner:rollback`. Persistent off-host scheduling is still unconfigured.
 - Follow `docs/safe-update.md` for upgrades and `docs/rescue-old-containers.md` if a second empty Compose stack appears. Never attach PostgreSQL 15 data files directly to PostgreSQL 16.
 
 ## Known issues
@@ -125,7 +126,7 @@ Release v2.1.0 publication and production rollout are in progress. Automated loc
 
 ## Recent important changes
 
-- Locally completed automatic asset hashes, PostgreSQL FSM storage with TTL and atomic data updates, and `scripts/deploy-production.sh` with preflight, backup/restore rehearsal, health checks, and attempted application rollback. Production execution remains pending off-host backup configuration.
+- Released to production in v2.1.0: automatic asset hashes, PostgreSQL FSM storage with TTL and atomic data updates, and `scripts/deploy-production.sh` with preflight, backup/restore rehearsal, health checks, and attempted application rollback. Production health/readiness, installed version, and public asset hashes were verified after deployment.
 - Validation: full PostgreSQL 16 integration and Chromium desktop/mobile suite passed (16 tests), then all seven focused asset/FSM/deployment checks passed after adding partial-stop recovery and concurrent FSM regressions. Ruff, shell syntax, diff whitespace checks, and Docker build (`school-planner:validation`) passed.
 - Modern responsive Mini App skin and updated desktop/mobile screenshots.
 - Versioned CSS/JS plus legacy asset shims to recover Telegram WebView caches.
@@ -140,7 +141,7 @@ Release v2.1.0 publication and production rollout are in progress. Automated loc
 ## Current priorities
 
 1. Configure the prepared backup job with an off-host rsync destination and external missing-run alert.
-2. Fix query-safe fallback invite/share URL generation; deploy and verify the locally completed asset/FSM/deployment changes when operational prerequisites are met.
+2. Publish prepared v2.1.0 commit/tag/release to GitHub when write credentials are available; fix query-safe fallback invite/share URL generation.
 3. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
 
 ## Next recommended steps

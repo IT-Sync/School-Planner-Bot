@@ -15,10 +15,11 @@ Off-host backup replication and missing-run alerting remain active operational w
 
 ## Medium priority
 
-- [ ] Roll out and verify the locally completed asset fingerprinting, PostgreSQL FSM storage, and deployment script after configuring off-host backups.
-  - Implemented: SHA-256 CSS/JS versions and rendered legacy shims; migration `0003_fsm_storage.sql`, seven-day configurable FSM TTL, atomic data updates; operator deployment with preflight, restore rehearsal, health checks, and attempted application rollback.
-  - Existing in-memory dialogs will not survive the initial switch. Application rollback requires backward-compatible migrations.
-  - Tests cover browser caching, FSM persistence/expiry/isolation, and deployment dry-run/partial-stop recovery. No production rollout has been performed for these changes.
+- [ ] Publish prepared v2.1.0 commit/tag and GitHub Release once write credentials are available.
+  - Application commit: `b6b858c`; annotated local and production tag: `v2.1.0`.
+  - Release notes: `docs/releases/v2.1.0.md`.
+  - Production rollout is complete: asset hashes, durable FSM migration, application health/readiness, and package/API version verified.
+  - Deployment used a verified manual off-host copy with explicit user authorization; configure permanent off-host backups separately.
 
 ## Low priority
 
