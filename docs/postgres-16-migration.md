@@ -12,6 +12,8 @@ Production currently keeps PostgreSQL 15 and its original `pgdata` bind mount th
 
 ## Rehearsal
 
+The first production-data rehearsal passed on 2026-09-13: a PostgreSQL 15.13 custom-format dump restored into the isolated PostgreSQL 16 container, control counts matched, and both recorded migrations were present. This verifies the current dump; repeat it immediately before cutover.
+
 Run the backup and isolated restore without stopping production:
 
 ```bash

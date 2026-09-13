@@ -1,6 +1,6 @@
 # Project Memory
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## Project purpose
 
@@ -18,6 +18,7 @@ Implemented:
 - Opt-in event reminders and evening summaries from the bot process.
 - Transactional, checksummed SQL migrations and migration of legacy schedules into the profile model.
 - Integration and real-browser tests in GitHub Actions.
+- Daily local PostgreSQL backups with archive/checksum/count validation and an isolated PostgreSQL 16 restore rehearsal.
 
 No feature is currently marked in progress. Planned and unfinished work is authoritative in `TODO.md`.
 
@@ -36,7 +37,7 @@ No feature is currently marked in progress. Planned and unfinished work is autho
 - **Frontend** — `app/webapp/static/index.html`, `planner-v2.css`, `planner-v2.js`. Server-rendered shell plus a DOM-based single-page UI. `styles.css` and `app.js` are compatibility entry points for cached old HTML.
 - **Database/migrations** — `app/core/database.py`, `app/migrate.py`, `migrations/`. A shared PostgreSQL database is the source of truth. Migrations are ordered SQL files with stored SHA-256 checksums and an advisory lock.
 - **Reminder worker** — `app/reminders.py`. Runs inside the bot process, polls periodically, resolves profile calendars, and sends Telegram messages with durable delivery claims.
-- **Deployment** — `Dockerfile`, `docker-compose.yml`, `docs/safe-update.md`, `docs/rescue-old-containers.md`, `scripts/keep-existing-db.py`.
+- **Deployment/backup** — `Dockerfile`, `docker-compose.yml`, `deploy/systemd/`, `scripts/backup-postgres.sh`, `scripts/rehearse-postgres16.sh`, and operator runbooks under `docs/`.
 
 ## Repository map
 
@@ -64,7 +65,7 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
-There is no active implementation branch or unfinished feature recorded. See `TODO.md` for prioritized work.
+Automated local backups and restore verification are deployed. Off-host replication/alerting needs a destination, and the PostgreSQL 16 production cutover still needs an approved maintenance window. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -82,7 +83,7 @@ There is no active implementation branch or unfinished feature recorded. See `TO
 - The repository exposes the webapp on loopback `${WEBAPP_PORT:-11002}` by default. PostgreSQL is internal to Compose in a new installation.
 - Production Mini App access requires valid Telegram `initData` in `X-Telegram-Init-Data`; query-string credentials are rejected. Development fallback identity is forbidden when `APP_ENV=production`.
 - Integration tests truncate `users CASCADE` and must only use a disposable database whose name ends in `_test`.
-- Frontend asset releases must change versioned URLs in `index.html` and both legacy compatibility shims until automated fingerprinting exists.
+- Frontend asset releases must change versioned URLs in `index.html` and both legacy compatibility shims until automated fingerprinting exists. Current asset release: `20260913.1`.
 
 ## External integrations
 
@@ -102,8 +103,9 @@ There is no active implementation branch or unfinished feature recorded. See `TO
 
 - A single image supplies `migrate`, `bot`, and `webapp`. Default Compose starts PostgreSQL, waits for it, runs migrations once, then starts bot and webapp as an unprivileged user with dropped capabilities.
 - CI validates lint/format, migrations, integration/browser tests, and Docker build. It does not deploy.
-- Current production was last verified on 2026-09-12. Application containers were rebuilt from `ba28333`; later `0da5c0b` changed only screenshots. The public URL is `https://gitflic.it-sync.ru/?v=20260912.1`, and the checkout is `/opt/pybot/School-Planner-Bot`.
+- Current production was last verified on 2026-09-13 at application commit `e9e6375`. The public URL is `https://gitflic.it-sync.ru/?v=20260913.1`, and the checkout is `/opt/pybot/School-Planner-Bot`.
 - Current production intentionally preserves the original `school-planner-bot` Compose project and PostgreSQL 15 container with its `pgdata` bind mount through an ignored `compose.keep-db.json`. Every production Compose command must include `-p school-planner-bot -f docker-compose.yml -f compose.keep-db.json`.
+- `school-planner-backup.timer` is enabled and runs daily around 02:15 Europe/Moscow with randomized delay. Backups are currently local under `backups/automatic`; the first checksum and PostgreSQL 16 restore rehearsal passed on 2026-09-13. Off-host `BACKUP_REMOTE` and external `BACKUP_HEALTHCHECK_URL` are not yet configured.
 - Follow `docs/safe-update.md` for upgrades and `docs/rescue-old-containers.md` if a second empty Compose stack appears. Never attach PostgreSQL 15 data files directly to PostgreSQL 16.
 
 ## Known issues
@@ -117,20 +119,22 @@ There is no active implementation branch or unfinished feature recorded. See `TO
 - Files have no preview, OCR, malware scan, or external object storage.
 - Missed reminders are not replayed after downtime, and uncertain Telegram sends are not retried.
 - No electronic-diary integration, offline mode, queue service, or horizontal worker coordination exists.
-- Production backup scheduling, proxy configuration, and certificate management are not represented as code here.
+- Off-host backup storage/alerting, proxy configuration, and certificate management are not yet configured in this repository.
 
 ## Recent important changes
 
 - Modern responsive Mini App skin and updated desktop/mobile screenshots.
 - Versioned CSS/JS plus legacy asset shims to recover Telegram WebView caches.
 - Replaced blocking unsaved-change confirmation with an in-app asynchronous dialog.
+- Fixed invisible text on destructive buttons and released frontend assets as `20260913.1`.
+- Added daily verified backup tooling/systemd units and passed a PostgreSQL 15 dump restore rehearsal on PostgreSQL 16.
 - Added family profiles, roles, dated events, tasks/files, holidays, sharing, bells, ICS, and reminders.
 - Added transactional migrations, PostgreSQL 15 rescue/update runbooks, CI, browser testing, and hardened Docker runtime defaults.
 
 ## Current priorities
 
-1. Establish automated, monitored, off-host production backups.
-2. Plan and rehearse the production PostgreSQL 15 to 16 migration.
+1. Configure the prepared backup job with an off-host rsync destination and external missing-run alert.
+2. Approve a maintenance window and execute the rehearsed production PostgreSQL 15 to 16 cutover.
 3. Fix query-safe fallback invite/share URL generation and automate frontend asset fingerprinting.
 4. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
 

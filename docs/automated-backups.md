@@ -2,6 +2,8 @@
 
 `scripts/backup-postgres.sh` creates a custom-format dump, validates its archive listing, records row counts and non-secret metadata, writes a SHA-256 checksum, and optionally copies the complete set to another host with `rsync`. A lock prevents overlapping runs. Local retention defaults to 14 days.
 
+Production status as of 2026-09-13: the timer is enabled, a local backup and PostgreSQL 16 restore rehearsal passed, and the next scheduled run is active. Off-host replication and external alerting still require operator-provided destinations.
+
 ## Production installation
 
 Create a dedicated SSH key and restricted destination on a different host, then install the configuration without committing it:
@@ -42,4 +44,3 @@ Run this regularly and after schema changes. It does not connect applications to
 - Do not place credentials in the repository or unit files. Use `/etc/school-planner-backup.conf` and a protected SSH configuration/key.
 - A local copy protects against database corruption but not host loss. `BACKUP_REQUIRE_REMOTE=1` makes the job fail when the off-host destination is unavailable or missing.
 - Test a full operational restore before declaring the backup system complete.
-

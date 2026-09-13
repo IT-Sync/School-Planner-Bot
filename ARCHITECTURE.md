@@ -73,6 +73,13 @@ flowchart LR
 - It reads every reminder-enabled user's accessible profiles, resolves local dates with each user's timezone, and sends upcoming-event or evening-summary messages.
 - `reminder_deliveries` is a durable idempotency ledger. A claim is inserted before Telegram send; duplicate claims are ignored.
 
+### Backup and restore verification
+
+- **Location:** `scripts/backup-postgres.sh`, `scripts/rehearse-postgres16.sh`, `deploy/systemd/`.
+- The daily systemd timer invokes `pg_dump -Fc` against the resolved Compose database, validates the archive, records important table counts/non-secret metadata, and writes a SHA-256 checksum.
+- An optional rsync destination provides off-host replication; `BACKUP_REQUIRE_REMOTE=1` turns a missing or failed remote copy into a failed job. An optional healthcheck URL reports success/failure.
+- Restore rehearsal uses an isolated PostgreSQL 16 container backed by tmpfs, restores the dump, compares table counts, and verifies migration/profile functions without connecting application processes.
+
 ## Data flows
 
 ### Mini App startup and authenticated request
@@ -104,6 +111,13 @@ flowchart LR
 2. When an event or evening summary enters its delivery window, it attempts to insert a unique delivery claim.
 3. Only the claimant sends to Telegram, then updates the claim to `sent` or `failed`.
 4. Claims are not replayed after failure or an uncertain send.
+
+### Backup and restore rehearsal
+
+1. The systemd timer starts a mutually exclusive backup job against the currently running database container.
+2. The script produces dump, archive listing, counts, metadata, and checksum sidecars with mode 0600.
+3. When configured, rsync copies the complete set to a different host before local retention is applied.
+4. The rehearsal verifies the checksum and restores to temporary PostgreSQL 16, then compares canonical table counts and removes the container.
 
 ### Legacy compatibility
 
@@ -157,6 +171,7 @@ There is no application cache, object storage, or persistent filesystem upload d
 - One in-process asyncio reminder loop per bot process.
 - aiogram long polling runs in the same process.
 - No Celery, RQ, Kafka, Redis queue, cron job, or distributed scheduler exists.
+- Production also runs `school-planner-backup.timer` under systemd; this is operational scheduling outside the application containers.
 - Running multiple bot/reminder replicas is not the intended topology. Database claims prevent duplicate reminder rows, but Telegram polling and all other multi-replica behavior are not designed here.
 
 ## Infrastructure and runtime
@@ -172,6 +187,8 @@ The shared application image runs as UID/GID 10001, drops Linux capabilities, en
 
 Current production differs intentionally: it retains PostgreSQL 15 and the original bind-mounted `pgdata` under Compose project `school-planner-bot` through ignored `compose.keep-db.json`. The public Mini App currently reaches the webapp through an external proxy. See `PROJECT_MEMORY.md` and operator runbooks for the verified deployment state.
 
+The backup timer is installed on the production VM. Local verified dumps are active; off-host rsync and external missing-run monitoring remain configuration work.
+
 ## Deployment architecture
 
 1. Take and validate a PostgreSQL custom-format dump before risky upgrades.
@@ -185,7 +202,7 @@ The current PostgreSQL 15 data directory must never be mounted into PostgreSQL 1
 
 ## CI/CD
 
-`.github/workflows/check.yml` runs on push and pull request. It provisions disposable PostgreSQL 16, installs locked dependencies and Chromium, runs Ruff, migrations, pytest including Playwright, builds the Docker image, and uploads browser screenshots. Deployment is manual; there is no CD workflow.
+`.github/workflows/check.yml` runs on push and pull request. It provisions disposable PostgreSQL 16, installs locked dependencies and Chromium, checks shell-script syntax, runs Ruff, migrations, pytest including Playwright, builds the Docker image, and uploads browser screenshots. Deployment is manual; there is no CD workflow.
 
 ## Configuration flow
 
@@ -201,7 +218,8 @@ The current PostgreSQL 15 data directory must never be mounted into PostgreSQL 1
 - Old Telegram WebView cache: versioned assets, no-store HTML, and legacy asset shims provide recovery; future asset releases must maintain this strategy.
 - Bot restart: in-progress FSM conversations disappear because state is memory-only.
 - Disk or database growth: attachments are stored in PostgreSQL; no retention job exists.
+- Backup destination unavailable: the job fails when `BACKUP_REQUIRE_REMOTE=1`; systemd records the failure and the optional healthcheck endpoint receives `/fail`.
 
 ## Current architecture vs planned architecture
 
-No replacement architecture is approved. Potential changes tracked in `TODO.md` include production PostgreSQL 16 migration, automated backups/deployment, asset fingerprinting, and possible durable FSM/object storage. Treat them as proposals until implemented.
+No replacement architecture is approved. PostgreSQL 16 restore compatibility is rehearsed, but production cutover is pending. Potential changes tracked in `TODO.md` include off-host backup configuration, automated deployment, asset fingerprinting, and possible durable FSM/object storage.

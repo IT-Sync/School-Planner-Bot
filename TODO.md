@@ -1,20 +1,22 @@
 # TODO
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## In progress
 
-No active repository work is currently recorded.
+Off-host backup replication/alerting and the PostgreSQL 16 production cutover remain active operational work.
 
 ## High priority
 
-- [ ] Configure automated, monitored, off-host production PostgreSQL backups and perform a restore drill.
-  - Relevant docs: `docs/safe-update.md`, `docs/rescue-old-containers.md`.
-  - Reason: backups are currently an operator-run procedure; attachments and all planner state exist only in PostgreSQL.
+- [ ] Configure the installed backup timer with an off-host rsync destination and external missing-run alert.
+  - Relevant docs: `docs/automated-backups.md`; configuration: `/etc/school-planner-backup.conf` on production.
+  - Completed 2026-09-13: daily systemd timer, verified local custom-format dump, checksum/count sidecars, and successful PostgreSQL 16 restore drill.
+  - Remaining input: a restricted `user@host:/path` destination and optionally a healthcheck URL. Set `BACKUP_REQUIRE_REMOTE=1` after configuring it.
 
-- [ ] Plan and rehearse the production PostgreSQL 15 to 16 logical migration before cutover.
-  - Relevant files: `docker-compose.yml`, `migrations/`, `scripts/keep-existing-db.py`.
-  - Reason: production intentionally uses PostgreSQL 15 with `pgdata`, while clean deployments use PostgreSQL 16 with a named volume. Never reuse the version-15 data directory directly.
+- [ ] Approve a maintenance window and execute the production PostgreSQL 15 to 16 logical cutover.
+  - Relevant docs: `docs/postgres-16-migration.md`, `docs/safe-update.md`.
+  - Completed 2026-09-13: migration plan and isolated restore rehearsal from production PostgreSQL 15.13 into PostgreSQL 16 passed with matching control counts.
+  - Production remains safely on the original PostgreSQL 15 container. Preserve it for rollback and never reuse its data directory with PostgreSQL 16.
 
 ## Medium priority
 
