@@ -20,7 +20,7 @@ Implemented:
 - Integration and real-browser tests in GitHub Actions.
 - Daily local PostgreSQL backups with archive/checksum/count validation and an isolated PostgreSQL 16 restore rehearsal.
 
-Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes are deployed to production at application commit `b6b858c` (tag `v2.1.0`); GitHub publication is awaiting write credentials. Planned and unfinished work is authoritative in `TODO.md`.
+Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes are deployed to production at application commit `b6b858c` (tag `v2.1.0`); GitHub main includes the release and deployment commits (verified through `02e7a8b`); the v2.1.0 tag and GitHub Release are not yet published. Planned and unfinished work is authoritative in `TODO.md`.
 
 ## Technology stack
 
@@ -65,7 +65,7 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
-Release v2.1.0 production rollout is complete; GitHub publication is awaiting write credentials. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
+Release v2.1.0 production rollout is complete; GitHub main includes the release and deployment commits (verified through `02e7a8b`); the v2.1.0 tag and GitHub Release are not yet published. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -141,7 +141,7 @@ Release v2.1.0 production rollout is complete; GitHub publication is awaiting wr
 ## Current priorities
 
 1. Configure the prepared backup job with an off-host rsync destination and external missing-run alert.
-2. Publish prepared v2.1.0 commit/tag/release to GitHub when write credentials are available; fix query-safe fallback invite/share URL generation.
+2. Publish the prepared v2.1.0 tag and GitHub Release when write credentials are available; fix query-safe fallback invite/share URL generation.
 3. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
 
 ## Next recommended steps

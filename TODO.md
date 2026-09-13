@@ -15,7 +15,8 @@ Off-host backup replication and missing-run alerting remain active operational w
 
 ## Medium priority
 
-- [ ] Publish prepared v2.1.0 commit/tag and GitHub Release once write credentials are available.
+- [ ] Publish the prepared v2.1.0 tag and GitHub Release once write credentials are available.
+  - User pushed main successfully; origin/main verified at `02e7a8b`. Remote tag is absent and the release endpoint returns HTTP 404.
   - Application commit: `b6b858c`; annotated local and production tag: `v2.1.0`.
   - Release notes: `docs/releases/v2.1.0.md`.
   - Production rollout is complete: asset hashes, durable FSM migration, application health/readiness, and package/API version verified.
