@@ -21,6 +21,8 @@ const state = {
 let dirty = false;
 let saving = false;
 let confirmationOpen = false;
+let attachmentPreview = null;
+let attachmentRequest = null;
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -357,6 +359,8 @@ function eventCard(e, date) {
 }
 
 function openSheet(title, content) {
+  attachmentRequest?.abort();
+  attachmentPreview?.close();
   dirty = false;
   $('sheet-title').textContent = title;
   $('sheet-body').replaceChildren(content);
@@ -407,8 +411,13 @@ function askConfirmation(message, confirmLabel = 'Продолжить') {
 }
 
 async function closeSheet(force = false) {
+  if (attachmentPreview?.open) {
+    attachmentPreview.close();
+    return false;
+  }
   if (saving) return false;
   if (!force && dirty && !await askConfirmation('Закрыть без сохранения изменений?', 'Закрыть')) return false;
+  attachmentRequest?.abort();
   if ($('sheet').open) $('sheet').close();
   dirty = false;
   tg?.BackButton?.hide();
@@ -730,15 +739,56 @@ function renderTasks() {
   }, el('div', {}, el('strong', {}, state.tasks.filter(t => t.completed).length), el('small', {}, 'готово')), el('div', {}, el('strong', {}, state.tasks.filter(t => !t.completed).length), el('small', {}, 'осталось')))))));
 }
 async function downloadAttachment(attachment, pid) {
+  attachmentRequest?.abort();
+  const controller = new AbortController();
+  attachmentRequest = controller;
+  const originForm = $('sheet-body').firstElementChild;
+  const trigger = document.activeElement;
   const response = await fetch(path(`/attachments/${attachment.id}`, pid), {
+    signal: controller.signal,
     headers: {
       'X-Telegram-Init-Data': initData
     }
   });
   if (!response.ok) throw new Error('Не удалось скачать файл');
-  const url = URL.createObjectURL(await response.blob());
+  const blob = await response.blob();
+  if (controller.signal.aborted || !$('sheet').open || $('sheet-body').firstElementChild !== originForm) return;
+  const url = URL.createObjectURL(blob);
+  if (['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+    const preview = el('dialog', {
+      class: 'attachment-preview',
+      'aria-labelledby': 'attachment-preview-title',
+      oncancel: event => {
+        event.preventDefault();
+        preview.close();
+      }
+    }, el('div', {
+      class: 'attachment-preview-header'
+    }, button('← Назад к заданию', () => preview.close(), 'button secondary'),
+    el('h2', {id: 'attachment-preview-title'}, attachment.filename)),
+    el('div', {class: 'attachment-preview-body'}, el('img', {
+      src: url,
+      alt: attachment.filename,
+      onerror: () => {
+        preview.close();
+        toast('Не удалось показать изображение', null, '', true);
+      }
+    })));
+    preview.addEventListener('close', () => {
+      URL.revokeObjectURL(url);
+      preview.remove();
+      if (attachmentPreview === preview) attachmentPreview = null;
+      if (trigger?.isConnected) trigger.focus();
+    }, {once: true});
+    attachmentPreview = preview;
+    document.body.append(preview);
+    preview.showModal();
+    return;
+  }
   const link = el('a', {
     href: url,
+    target: '_blank',
+    rel: 'noopener',
     download: attachment.filename
   }, 'Скачать');
   document.body.append(link);

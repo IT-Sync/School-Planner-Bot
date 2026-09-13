@@ -29,6 +29,12 @@ Off-host backup replication and missing-run alerting remain active operational w
 
 ## Medium priority
 
+- [ ] Deploy the local image-attachment navigation fix.
+  - Images now open in an in-app preview with a back button; Telegram BackButton/Escape return to the unchanged task form and preserve unsaved notes.
+  - Relevant files: `app/webapp/static/planner-v2.js`, `planner-v2.css`, `tests/test_browser.py`.
+  - Verified in Chromium at 1440/390 widths: back button, Escape, mocked Telegram BackButton, preserved draft/confirmation, blob URL cleanup and TXT download.
+  - No database/API changes; frontend asset hashes update automatically on web process restart.
+
 - [ ] Publish the prepared v2.1.0 tag and GitHub Release once write credentials are available.
   - User pushed main successfully; origin/main verified at `c61778e` during this audit. Remote tag is absent and the release endpoint returns HTTP 404.
   - Application commit: `b6b858c`; annotated local and production tag: `v2.1.0`.

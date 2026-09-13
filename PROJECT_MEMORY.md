@@ -65,6 +65,8 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
+Local attachment-navigation fix: images open above the existing task form instead of navigating the WebView to a blob URL. Requests are aborted when the form closes or changes; the Telegram back action closes the image first. Chromium workflows passed at widths 1440 and 390, covering all three preview exit paths, preserved unsaved text/confirmation, object URL cleanup and TXT download; Ruff and diff checks passed. Production remains at the previously verified v2.1.0 build until this fix is deployed.
+
 Release v2.1.0 production rollout is complete; GitHub main includes the release and deployment commits (verified through `c61778e`); the v2.1.0 tag and GitHub Release are not yet published. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
@@ -119,7 +121,7 @@ Release v2.1.0 production rollout is complete; GitHub main includes the release 
 
 - FSM state survives bot restarts after migration `0003_fsm_storage.sql`; expired dialogs are discarded (seven days after the last state/data write by default). Existing in-memory production dialogs cannot be migrated.
 - ICS is a downloadable 28-day snapshot, not a subscribed calendar feed.
-- Files have no preview, OCR, malware scan, or external object storage.
+- PNG/JPEG/WebP attachment preview is implemented locally in a separate in-app dialog; it preserves the task form and draft, closes via its back button, Escape or Telegram BackButton, and revokes the object URL on close. Other files keep their download flow. This fix is not yet deployed. Files have no OCR, malware scan, or external object storage.
 - Missed reminders are not replayed after downtime, and uncertain Telegram sends are not retried.
 - No electronic-diary integration, offline mode, queue service, or horizontal worker coordination exists.
 - Off-host backup storage/alerting, proxy configuration, and certificate management are not yet configured in this repository.

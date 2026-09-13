@@ -1,6 +1,7 @@
 """Real browser regression test; uses only a disposable database."""
 
 import asyncio
+import base64
 import os
 import re
 import socket
@@ -77,6 +78,19 @@ async def test_web_workflows(width):
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
             page = await browser.new_page(viewport={"width": width, "height": 900})
+            await page.route(
+                "https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(body="")
+            )
+            await page.add_init_script("""
+                window.Telegram = {WebApp: {
+                    initData: '', ready() {}, expand() {}, onEvent() {},
+                    BackButton: {
+                        show() { this.visible = true; },
+                        hide() { this.visible = false; },
+                        onClick(callback) { this.callback = callback; }
+                    }
+                }};
+            """)
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(base)
@@ -135,10 +149,60 @@ async def test_web_workflows(width):
             await page.get_by_role("button", name="+ Добавить задание").click()
             await page.locator("[name=title]").fill("Решить задачи 1–5")
             await page.locator("[name=files]").set_input_files(
-                {"name": "задание.txt", "mimeType": "text/plain", "buffer": "Материалы".encode()}
+                [
+                    {
+                        "name": "задание.txt",
+                        "mimeType": "text/plain",
+                        "buffer": "Материалы".encode(),
+                    },
+                    {
+                        "name": "картинка.png",
+                        "mimeType": "image/png",
+                        "buffer": base64.b64decode(
+                            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="
+                        ),
+                    },
+                ]
             )
             await page.get_by_role("button", name="Сохранить", exact=True).click()
             await page.locator("dialog").wait_for(state="hidden")
+            await page.get_by_text("Решить задачи 1–5", exact=True).click()
+            await page.locator("textarea[name=description]").fill("Несохранённая заметка")
+            page_url = page.url
+            for close_with in ("button", "escape", "telegram"):
+                await page.get_by_role("button", name="картинка.png", exact=False).click()
+                preview = page.get_by_role("dialog", name="картинка.png")
+                await preview.wait_for(state="visible")
+                await page.wait_for_function(
+                    "document.querySelector('.attachment-preview img')?.naturalWidth > 0"
+                )
+                image_url = await preview.locator("img").get_attribute("src")
+                assert page.url == page_url
+                assert len(browser.contexts[0].pages) == 1
+                if close_with == "button":
+                    await preview.get_by_role("button", name="Назад к заданию").click()
+                elif close_with == "escape":
+                    await page.keyboard.press("Escape")
+                else:
+                    await page.evaluate("Telegram.WebApp.BackButton.callback()")
+                await preview.wait_for(state="detached")
+                assert await page.locator("#sheet").is_visible()
+                assert (
+                    await page.locator("textarea[name=description]").input_value()
+                    == "Несохранённая заметка"
+                )
+                assert await page.evaluate("Telegram.WebApp.BackButton.visible")
+                assert not await page.evaluate(
+                    "url => fetch(url).then(() => true, () => false)", image_url
+                )
+            async with page.expect_download() as download_info:
+                await page.get_by_role("button", name="задание.txt", exact=False).click()
+            assert (await download_info.value).suggested_filename == "задание.txt"
+            await page.get_by_role("button", name="Закрыть окно").click()
+            await page.get_by_role("heading", name="Закрыть без сохранения изменений?").wait_for()
+            await page.get_by_role("button", name="Остаться", exact=True).click()
+            await page.get_by_role("button", name="Сохранить", exact=True).click()
+            await page.locator("#sheet").wait_for(state="hidden")
             await page.get_by_role("checkbox", name="Выполнено: Решить задачи 1–5").check()
             await page.get_by_role("button", name="Готово", exact=True).click()
             await page.get_by_text("Решить задачи 1–5", exact=True).wait_for()

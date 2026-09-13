@@ -57,6 +57,7 @@ flowchart LR
 - **Inputs:** bootstrap/profile API responses and Telegram WebApp runtime data.
 - **Outputs:** API mutations and rendered DOM UI.
 - `index.html` loads `planner-v2.css` and `planner-v2.js` with per-file SHA-256 content-hash queries rendered by `app/webapp/assets.py` at process startup. The root document is not cached; only assets requested with their current hash are immutable; stale versions revalidate. Legacy `styles.css`/`app.js` import the current assets for old cached HTML.
+- Local attachment-navigation fix (not yet deployed): authenticated image downloads become blob-backed PNG/JPEG/WebP previews in a separate modal above the existing task form. Closing the preview preserves form state and releases the object URL; form closure/replacement aborts pending attachment requests. Other file types retain downloads.
 - The UI uses DOM construction rather than HTML injection. Only the theme is persisted in browser local storage.
 
 ### Database and migrations
