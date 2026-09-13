@@ -85,6 +85,92 @@ async def setup_profile(c):
     return f"/api/profiles/{b['default_profile_id']}"
 
 
+@pytest.mark.integration
+async def test_postgres_fsm_storage_survives_restart_and_expires(client):
+    from dataclasses import replace
+
+    from aiogram.fsm.storage.base import StorageKey
+
+    from app.telegram.fsm_storage import PostgresStorage
+    from app.webapp import main
+
+    pool = main.database.pool
+    await pool.execute("TRUNCATE bot_fsm_storage")
+    key = StorageKey(
+        bot_id=10,
+        chat_id=-20,
+        user_id=30,
+        thread_id=40,
+        business_connection_id="business",
+        destiny="edit",
+    )
+    storage = PostgresStorage(pool, ttl_seconds=600)
+    await storage.set_state(key, "LessonsState:waiting_for_text")
+    await storage.set_data(key, {"weekday": 2, "raw_text": "Алгебра"})
+
+    restarted = PostgresStorage(pool, ttl_seconds=600)
+    assert await restarted.get_state(key) == "LessonsState:waiting_for_text"
+    assert await restarted.get_data(key) == {"weekday": 2, "raw_text": "Алгебра"}
+    assert await restarted.update_data(key, {"weekday": 3}) == {
+        "weekday": 3,
+        "raw_text": "Алгебра",
+    }
+
+    variants = [
+        replace(key, bot_id=11),
+        replace(key, chat_id=-21),
+        replace(key, user_id=31),
+        replace(key, thread_id=None),
+        replace(key, business_connection_id=None),
+        replace(key, destiny="other"),
+    ]
+    for index, variant in enumerate(variants):
+        await restarted.set_state(variant, f"variant-{index}")
+    assert await restarted.get_state(key) == "LessonsState:waiting_for_text"
+    clear_key = variants[0]
+    await restarted.set_data(clear_key, {"pending": True})
+    await restarted.set_state(clear_key, None)
+    assert await restarted.get_data(clear_key) == {"pending": True}
+    await restarted.set_data(clear_key, {})
+    assert await restarted.get_state(clear_key) is None
+    assert await restarted.get_data(clear_key) == {}
+
+    await pool.execute(
+        """
+        UPDATE bot_fsm_storage SET expires_at = now() - interval '1 second'
+        WHERE bot_id = $1 AND chat_id = $2 AND user_id = $3
+          AND thread_id IS NOT DISTINCT FROM $4
+          AND business_connection_id IS NOT DISTINCT FROM $5 AND destiny = $6
+        """,
+        *PostgresStorage._key_args(key),
+    )
+    assert await restarted.get_state(key) is None
+    assert await restarted.get_data(key) == {}
+    assert await restarted.update_data(key, {"fresh": True}) == {"fresh": True}
+    assert await restarted.get_state(key) is None
+    await pool.execute(
+        """
+        UPDATE bot_fsm_storage SET expires_at = now() - interval '1 second'
+        WHERE bot_id = $1 AND chat_id = $2 AND user_id = $3
+          AND thread_id IS NOT DISTINCT FROM $4
+          AND business_connection_id IS NOT DISTINCT FROM $5 AND destiny = $6
+        """,
+        *PostgresStorage._key_args(key),
+    )
+    await restarted.cleanup_expired()
+    assert await pool.fetchval("SELECT count(*) FROM bot_fsm_storage") == 5
+
+    default_key = StorageKey(bot_id=10, chat_id=20, user_id=30)
+    await asyncio.gather(
+        *(restarted.update_data(default_key, {f"field_{i}": i}) for i in range(10))
+    )
+    assert await restarted.get_data(default_key) == {f"field_{i}": i for i in range(10)}
+    await restarted.set_state(default_key, "editing")
+    await restarted.set_state(default_key, None)
+    await restarted.set_data(default_key, {})
+    assert await pool.fetchval("SELECT count(*) FROM bot_fsm_storage") == 5
+
+
 def event(**kwargs):
     return {
         "weekday": 1,

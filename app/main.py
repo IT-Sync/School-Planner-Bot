@@ -6,7 +6,7 @@ from contextlib import suppress
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 
 from app.config import get_settings
@@ -23,6 +23,7 @@ from app.repositories import (
 )
 from app.services import AdminService, ScheduleService
 from app.telegram import handlers
+from app.telegram.fsm_storage import PostgresStorage
 
 
 async def main() -> None:
@@ -32,7 +33,6 @@ async def main() -> None:
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
     )
-    dp = Dispatcher(storage=MemoryStorage())
     await bot.set_my_commands(
         [
             BotCommand(command="web", description="Открыть школьный планер"),
@@ -48,6 +48,12 @@ async def main() -> None:
 
     database = Database(settings)
     await database.connect()
+    fsm_storage = PostgresStorage(database.pool, ttl_seconds=settings.fsm_ttl_seconds)
+    await fsm_storage.cleanup_expired()
+    dp = Dispatcher(
+        storage=fsm_storage,
+        events_isolation=SimpleEventIsolation(),
+    )
     health_server = await start_health_server(port=settings.health_port)
 
     schedule_repo = ScheduleRepository(database.pool)

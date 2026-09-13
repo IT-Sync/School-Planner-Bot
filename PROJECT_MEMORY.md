@@ -20,7 +20,7 @@ Implemented:
 - Integration and real-browser tests in GitHub Actions.
 - Daily local PostgreSQL backups with archive/checksum/count validation and an isolated PostgreSQL 16 restore rehearsal.
 
-No feature is currently marked in progress. Planned and unfinished work is authoritative in `TODO.md`.
+Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes have not been deployed to production. Planned and unfinished work is authoritative in `TODO.md`.
 
 ## Technology stack
 
@@ -32,7 +32,7 @@ No feature is currently marked in progress. Planned and unfinished work is autho
 
 ## Main components
 
-- **Bot runtime** — `app/main.py`, `app/telegram/`, `app/services/`, `app/repositories/`. Runs aiogram long polling, legacy command workflows, an HTTP health listener, and the reminder loop. Uses PostgreSQL and Telegram Bot API.
+- **Bot runtime** — `app/main.py`, `app/telegram/`, `app/services/`, `app/repositories/`. Runs aiogram long polling, legacy command workflows, an HTTP health listener, and the reminder loop. Uses PostgreSQL and Telegram Bot API. FSM conversations persist in `bot_fsm_storage`; writes renew a configurable seven-day TTL, with expiry cleanup at startup and on storage access (at most every five minutes). Per-key event isolation applies within the single bot process.
 - **Mini App/API** — `app/webapp/main.py`, `app/planner/`. FastAPI serves static frontend files and both the profile API and a small legacy schedule API. Authenticates Telegram launch data and talks directly to PostgreSQL through asyncpg.
 - **Frontend** — `app/webapp/static/index.html`, `planner-v2.css`, `planner-v2.js`. Server-rendered shell plus a DOM-based single-page UI. `styles.css` and `app.js` are compatibility entry points for cached old HTML.
 - **Database/migrations** — `app/core/database.py`, `app/migrate.py`, `migrations/`. A shared PostgreSQL database is the source of truth. Migrations are ordered SQL files with stored SHA-256 checksums and an advisory lock.
@@ -60,12 +60,12 @@ docs/              Operator runbooks, development notes and UI screenshots
 - Mutations lock the profile row so concurrent editors cannot bypass conflict checks. Preview imports execute using the normal logic inside a rolled-back transaction.
 - Tasks support up to five validated PDF/PNG/JPEG/WebP/UTF-8 TXT files, normally limited to 5 MiB each, stored in PostgreSQL `BYTEA`.
 - Profile invitations are single-use. Share tokens and invite tokens are stored only as SHA-256 digests.
-- Static assets use versioned immutable URLs. The root document is `no-store`; unversioned legacy assets are `must-revalidate` to recover old Telegram WebView caches.
+- Static CSS/JS versions are derived from SHA-256 content hashes at process startup, with matching versions rendered into the root HTML and legacy shims. Only URLs carrying the current content hash are immutable. The root document is `no-store`; unversioned legacy assets are `must-revalidate` to recover old Telegram WebView caches.
 - Unsaved-form confirmation is implemented inside the Mini App instead of relying on blocking browser `confirm()` behavior.
 
 ## Work in progress
 
-Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
+Release v2.1.0 publication and production rollout are in progress. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -83,7 +83,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 - The repository exposes the webapp on loopback `${WEBAPP_PORT:-11002}` by default. PostgreSQL is internal to Compose in a new installation.
 - Production Mini App access requires valid Telegram `initData` in `X-Telegram-Init-Data`; query-string credentials are rejected. Development fallback identity is forbidden when `APP_ENV=production`.
 - Integration tests truncate `users CASCADE` and must only use a disposable database whose name ends in `_test`.
-- Frontend asset releases must change versioned URLs in `index.html` and both legacy compatibility shims until automated fingerprinting exists. Current asset release: `20260913.1`.
+- Restart the web process after changing frontend files so content hashes and templates reload together. Production last verified asset release remains `20260913.1`; local code generates hashes automatically.
 
 ## External integrations
 
@@ -96,7 +96,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 
 - `app/config.py` is authoritative; Pydantic Settings reads process environment and `.env`, case-insensitively. Compose injects `.env` and explicitly supplies database/runtime settings.
 - Required production settings: `BOT_TOKEN`, `DATABASE_PASSWORD`; practical deployment also needs `BOT_USERNAME` and `WEBAPP_URL`.
-- Important controls: `APP_ENV`, database connection variables, `DEFAULT_TZ`, `WEEK_MODE_DEFAULT`, daily event limits, `HEALTH_PORT`, `ADMIN_IDS`, `WEBAPP_AUTH_MAX_AGE`, `REMINDER_POLL_SECONDS`, `MAX_ATTACHMENT_BYTES`, `WEBAPP_BIND_HOST`, and `WEBAPP_PORT`.
+- Important controls: `APP_ENV`, database connection variables, `DEFAULT_TZ`, `WEEK_MODE_DEFAULT`, daily event limits, `HEALTH_PORT`, `ADMIN_IDS`, `WEBAPP_AUTH_MAX_AGE`, `REMINDER_POLL_SECONDS`, `FSM_TTL_SECONDS`, `MAX_ATTACHMENT_BYTES`, `WEBAPP_BIND_HOST`, and `WEBAPP_PORT`.
 - Never commit `.env`, backups, `pgdata`, or `compose.keep-db.json`; all are ignored.
 
 ## Deployment
@@ -104,6 +104,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 - A single image supplies `migrate`, `bot`, and `webapp`. Default Compose starts PostgreSQL, waits for it, runs migrations once, then starts bot and webapp as an unprivileged user with dropped capabilities.
 - CI validates lint/format, migrations, integration/browser tests, and Docker build. It does not deploy.
 - Current production was last verified on 2026-09-13 at application commit `e9e6375`. The public URL is `https://gitflic.it-sync.ru/?v=20260913.1`, and the checkout is `/opt/pybot/School-Planner-Bot`.
+- Production SSH: `alexk@weapp01.it-sync.hl`; run checkout and Docker operations through sudo. Do not store authentication material in project memory.
 - Current production uses PostgreSQL 16.15 in the original `school-planner-bot` Compose project. Its ignored `compose.keep-db.json` preserves the established host port and points at external volume `school-planner-bot-postgres16-data-20260913T065348Z`. Every production Compose command must include `-p school-planner-bot -f docker-compose.yml -f compose.keep-db.json`.
 - The 2026-09-13 logical cutover preserved PostgreSQL 15 rollback container `school-planner-db-pg15-rollback-20260913T065348Z` and untouched bind directory `/opt/pybot/School-Planner-Bot/pgdata`. Cutover artifacts and instructions are mode-600 files under `backups/cutover-20260913T065348Z`; do not delete them until the retention decision is explicit.
 - `school-planner-backup.timer` is enabled and runs daily around 02:15 Europe/Moscow with randomized delay. Backups are currently local under `backups/automatic`; pre-cutover and post-cutover dumps passed checksum, count, migration, and PostgreSQL 16 restore checks on 2026-09-13. Off-host `BACKUP_REMOTE` and external `BACKUP_HEALTHCHECK_URL` are not yet configured.
@@ -115,7 +116,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 
 ## Known limitations
 
-- FSM state uses aiogram `MemoryStorage` and is lost on bot restart.
+- FSM state survives bot restarts after migration `0003_fsm_storage.sql`; expired dialogs are discarded (seven days after the last state/data write by default). Existing in-memory production dialogs cannot be migrated.
 - ICS is a downloadable 28-day snapshot, not a subscribed calendar feed.
 - Files have no preview, OCR, malware scan, or external object storage.
 - Missed reminders are not replayed after downtime, and uncertain Telegram sends are not retried.
@@ -124,6 +125,8 @@ Automated local backups and restore verification are deployed. Off-host replicat
 
 ## Recent important changes
 
+- Locally completed automatic asset hashes, PostgreSQL FSM storage with TTL and atomic data updates, and `scripts/deploy-production.sh` with preflight, backup/restore rehearsal, health checks, and attempted application rollback. Production execution remains pending off-host backup configuration.
+- Validation: full PostgreSQL 16 integration and Chromium desktop/mobile suite passed (16 tests), then all seven focused asset/FSM/deployment checks passed after adding partial-stop recovery and concurrent FSM regressions. Ruff, shell syntax, diff whitespace checks, and Docker build (`school-planner:validation`) passed.
 - Modern responsive Mini App skin and updated desktop/mobile screenshots.
 - Versioned CSS/JS plus legacy asset shims to recover Telegram WebView caches.
 - Replaced blocking unsaved-change confirmation with an in-app asynchronous dialog.
@@ -137,7 +140,7 @@ Automated local backups and restore verification are deployed. Off-host replicat
 ## Current priorities
 
 1. Configure the prepared backup job with an off-host rsync destination and external missing-run alert.
-2. Fix query-safe fallback invite/share URL generation and automate frontend asset fingerprinting.
+2. Fix query-safe fallback invite/share URL generation; deploy and verify the locally completed asset/FSM/deployment changes when operational prerequisites are met.
 3. Decide whether deployment, proxy, and certificate configuration should become infrastructure as code.
 
 ## Next recommended steps

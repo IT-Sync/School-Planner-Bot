@@ -1,6 +1,6 @@
 [project]
 name = "school-planner-bot"
-version = "1.0.0"
+version = "2.1.0"
 description = "Family school planner with Telegram Mini App, reminders and homework."
 authors = [{ name = "School Planner Team" }]
 requires-python = ">=3.11"

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -79,22 +80,33 @@ async def test_web_workflows(width):
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(base)
-            assert (
-                await page.locator('link[rel="stylesheet"]').get_attribute("href")
-                == "/static/planner-v2.css?v=20260913.1"
+            stylesheet_href = await page.locator('link[rel="stylesheet"]').get_attribute("href")
+            assert re.fullmatch(r"/static/planner-v2\.css\?v=[0-9a-f]{16}", stylesheet_href)
+            script_src = await page.locator('script[src^="/static/planner-v2.js"]').get_attribute(
+                "src"
             )
+            assert re.fullmatch(r"/static/planner-v2\.js\?v=[0-9a-f]{16}", script_src)
             assert (
                 await page.evaluate("getComputedStyle(document.body).backgroundColor")
                 == "rgb(243, 246, 251)"
             )
-            stylesheet = await page.request.get(f"{base}/static/planner-v2.css?v=20260913.1")
+            stylesheet = await page.request.get(f"{base}{stylesheet_href}")
             assert stylesheet.ok
             assert "text/css" in stylesheet.headers["content-type"]
             assert "immutable" in stylesheet.headers["cache-control"]
+            stale_stylesheet = await page.request.get(
+                f"{base}/static/planner-v2.css?v=stale-version"
+            )
+            assert "immutable" not in stale_stylesheet.headers["cache-control"]
+            assert "must-revalidate" in stale_stylesheet.headers["cache-control"]
             legacy_stylesheet = await page.request.get(f"{base}/static/styles.css")
             assert legacy_stylesheet.ok
             assert "must-revalidate" in legacy_stylesheet.headers["cache-control"]
-            assert "planner-v2.css?v=20260913.1" in await legacy_stylesheet.text()
+            assert stylesheet_href in await legacy_stylesheet.text()
+            legacy_javascript = await page.request.get(f"{base}/static/app.js")
+            assert legacy_javascript.ok
+            assert "must-revalidate" in legacy_javascript.headers["cache-control"]
+            assert script_src in await legacy_javascript.text()
             await page.get_by_role("button", name="Поделиться расписанием").click()
             await page.get_by_role("checkbox", name="Вс").uncheck()
             await page.get_by_role("button", name="Закрыть окно").click()

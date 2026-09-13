@@ -41,7 +41,7 @@ flowchart LR
 - **Inputs:** Telegram updates through long polling, environment configuration, and PostgreSQL data.
 - **Outputs:** Telegram messages, keyboards, menu button, share flows, and health responses on `HEALTH_PORT`.
 - **Dependencies:** Telegram Bot API and PostgreSQL.
-- `MemoryStorage` holds transient FSM conversations. `ScheduleService` supports established commands and accesses canonical events through writable legacy views.
+- `PostgresStorage` persists FSM conversations in `bot_fsm_storage`. State/data writes renew `FSM_TTL_SECONDS` (default seven days); reads exclude expired rows. Cleanup runs at startup and on access every five minutes. Atomic JSONB merges prevent lost data updates; `SimpleEventIsolation` serializes same-key events within the bot process. `ScheduleService` supports established commands and accesses canonical events through writable legacy views.
 
 ### FastAPI Mini App backend
 
@@ -56,7 +56,7 @@ flowchart LR
 - **Location:** `app/webapp/static/`.
 - **Inputs:** bootstrap/profile API responses and Telegram WebApp runtime data.
 - **Outputs:** API mutations and rendered DOM UI.
-- `index.html` loads `planner-v2.css` and `planner-v2.js` with a release query. The root document is not cached; versioned assets are immutable. Legacy `styles.css`/`app.js` import the current assets for old cached HTML.
+- `index.html` loads `planner-v2.css` and `planner-v2.js` with per-file SHA-256 content-hash queries rendered by `app/webapp/assets.py` at process startup. The root document is not cached; only assets requested with their current hash are immutable; stale versions revalidate. Legacy `styles.css`/`app.js` import the current assets for old cached HTML.
 - The UI uses DOM construction rather than HTML injection. Only the theme is persisted in browser local storage.
 
 ### Database and migrations
@@ -146,6 +146,7 @@ PostgreSQL is the only durable application store.
 - `profile_invites`, `planner_shares`: hashed access tokens and schedule snapshots.
 - `profile_bells`: optional bell slots.
 - `reminder_deliveries`: notification claims/results.
+- `bot_fsm_storage`: state, JSONB data, and expiry keyed by bot/chat/user/thread/business connection/destiny, with NULL-aware uniqueness (migration `0003`).
 - `legacy_schedule`, `legacy_extras`, `schedule`, `extras`, `share_tokens`: old data and compatibility surfaces.
 - `planner_migrations`: applied migration names and checksums.
 
@@ -202,7 +203,7 @@ The retained PostgreSQL 15 data directory must never be mounted into PostgreSQL 
 
 ## CI/CD
 
-`.github/workflows/check.yml` runs on push and pull request. It provisions disposable PostgreSQL 16, installs locked dependencies and Chromium, checks shell-script syntax, runs Ruff, migrations, pytest including Playwright, builds the Docker image, and uploads browser screenshots. Deployment is manual; there is no CD workflow.
+`.github/workflows/check.yml` runs on push and pull request. It provisions disposable PostgreSQL 16, installs locked dependencies and Chromium, checks shell-script syntax, runs Ruff, migrations, pytest including Playwright, builds the Docker image, and uploads browser screenshots. Deployment is operator-triggered via `scripts/deploy-production.sh`; CI does not deploy. The script requires a clean checkout, production Compose override, healthy DB, and enforced off-host backup (or an explicit local-backup exception). It builds, stops writers, validates a backup and restore, migrates, recreates only applications, verifies health and unchanged DB identity, and attempts application recovery on failure. Database restore is never automatic; migrations must remain compatible with the previous application for image rollback.
 
 ## Configuration flow
 
@@ -216,10 +217,10 @@ The retained PostgreSQL 15 data directory must never be mounted into PostgreSQL 
 - Expired or invalid init data: API returns 401 and the UI must be reopened through Telegram.
 - Reverse proxy or TLS failure: public Mini App is unavailable while internal health may remain green.
 - Old Telegram WebView cache: versioned assets, no-store HTML, and legacy asset shims provide recovery; future asset releases must maintain this strategy.
-- Bot restart: in-progress FSM conversations disappear because state is memory-only.
+- Bot restart: non-expired FSM conversations resume from PostgreSQL after migration `0003`; dialogs from the former memory-only implementation cannot be recovered.
 - Disk or database growth: attachments are stored in PostgreSQL; no retention job exists.
 - Backup destination unavailable: the job fails when `BACKUP_REQUIRE_REMOTE=1`; systemd records the failure and the optional healthcheck endpoint receives `/fail`.
 
 ## Current architecture vs planned architecture
 
-No replacement architecture is approved. Production and CI now run PostgreSQL 16. Potential changes tracked in `TODO.md` include off-host backup configuration, automated deployment, asset fingerprinting, and possible durable FSM/object storage.
+No replacement architecture is approved. Production and CI now run PostgreSQL 16. Potential changes tracked in `TODO.md` include off-host backup configuration and possible object storage. Asset fingerprinting, durable FSM, and the deployment script are implemented locally; production rollout is pending.

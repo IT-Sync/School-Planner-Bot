@@ -40,6 +40,20 @@ Compose запускает БД, отдельный процесс миграц�
 
 ### Пересборка после изменений
 
+На production после настройки внешних резервных копий используйте операторский
+сценарий с предварительной проверкой:
+
+```bash
+sudo scripts/deploy-production.sh --dry-run
+sudo scripts/deploy-production.sh
+```
+
+Он использует сохранённый `compose.keep-db.json`, проверяет восстановление дампа,
+применяет миграции и гарантирует, что Compose не пересоздал контейнер БД.
+Подробности и порядок выбора commit: [безопасное обновление](docs/safe-update.md).
+
+Для локальной разработки:
+
 ```bash
 docker compose build
 docker compose stop bot webapp

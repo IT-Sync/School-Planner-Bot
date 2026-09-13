@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     webapp_dev_user_id: int | None = Field(alias="WEBAPP_DEV_USER_ID", default=None, gt=0)
     webapp_auth_max_age: int = Field(alias="WEBAPP_AUTH_MAX_AGE", default=3600, ge=60, le=86400)
     reminder_poll_seconds: int = Field(alias="REMINDER_POLL_SECONDS", default=30, ge=10, le=60)
+    fsm_ttl_seconds: int = Field(
+        alias="FSM_TTL_SECONDS", default=7 * 24 * 60 * 60, ge=300, le=30 * 24 * 60 * 60
+    )
     max_attachment_bytes: int = Field(
         alias="MAX_ATTACHMENT_BYTES", default=5 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024
     )

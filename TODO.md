@@ -15,17 +15,10 @@ Off-host backup replication and missing-run alerting remain active operational w
 
 ## Medium priority
 
-- [ ] Automate frontend asset fingerprinting or centralize the release version.
-  - Relevant files: `app/webapp/static/index.html`, `styles.css`, `app.js`.
-  - Reason: the current cache-recovery strategy requires manually updating versioned CSS/JS references and compatibility shims together.
-
-- [ ] Decide whether bot FSM state must survive restarts; use durable storage if required.
-  - Relevant code: `MemoryStorage` in `app/main.py`, state definitions in `app/telegram/states.py`.
-  - Reason: current editing conversations are discarded whenever the bot container restarts.
-
-- [ ] Define and automate the production deployment workflow after backup policy is in place.
-  - Relevant files: `.github/workflows/check.yml`, `docs/safe-update.md`.
-  - Reason: CI validates commits, but server deployment, health verification, and rollback remain manual.
+- [ ] Roll out and verify the locally completed asset fingerprinting, PostgreSQL FSM storage, and deployment script after configuring off-host backups.
+  - Implemented: SHA-256 CSS/JS versions and rendered legacy shims; migration `0003_fsm_storage.sql`, seven-day configurable FSM TTL, atomic data updates; operator deployment with preflight, restore rehearsal, health checks, and attempted application rollback.
+  - Existing in-memory dialogs will not survive the initial switch. Application rollback requires backward-compatible migrations.
+  - Tests cover browser caching, FSM persistence/expiry/isolation, and deployment dry-run/partial-stop recovery. No production rollout has been performed for these changes.
 
 ## Low priority
 

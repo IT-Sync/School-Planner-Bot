@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -20,6 +20,7 @@ from app.repositories import (
 )
 from app.services import ScheduleService
 from app.services.errors import InputValidationError
+from app.webapp.assets import FrontendAssets
 from app.webapp.auth import WebAppAuthError, WebAppUser, verify_init_data
 from app.webapp.limits import BodyLimitMiddleware
 from app.webapp.schemas import (
@@ -54,11 +55,37 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="School Planner WebApp API",
-    version="2.0.0",
+    version="2.1.0",
     lifespan=lifespan,
 )
 static_dir = Path(__file__).resolve().parent / "static"
+frontend_assets = FrontendAssets.load(static_dir) if static_dir.exists() else None
+immutable_asset_versions = (
+    {
+        "/static/planner-v2.css": frontend_assets.css_version,
+        "/static/planner-v2.js": frontend_assets.js_version,
+    }
+    if frontend_assets
+    else {}
+)
+
+
+@app.get("/static/styles.css", include_in_schema=False)
+async def legacy_stylesheet() -> Response:
+    if frontend_assets is None:
+        return Response("WebApp bundle not found", status_code=500)
+    return Response(frontend_assets.legacy_css, media_type="text/css")
+
+
+@app.get("/static/app.js", include_in_schema=False)
+async def legacy_javascript() -> Response:
+    if frontend_assets is None:
+        return Response("WebApp bundle not found", status_code=500)
+    return Response(frontend_assets.legacy_js, media_type="text/javascript")
+
+
 if static_dir.exists():
+    # Compatibility routes above must take precedence over this static mount.
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
@@ -120,10 +147,9 @@ async def health() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def root() -> HTMLResponse:
-    if not static_dir.exists():
+    if frontend_assets is None:
         return HTMLResponse("<h1>WebApp bundle not found</h1>", status_code=500)
-    html_path = static_dir / "index.html"
-    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    return HTMLResponse(frontend_assets.index_html)
 
 
 @app.get("/api/schedule/day", response_model=DayScheduleResponse)
@@ -255,7 +281,9 @@ async def response_headers(request, call_next):
         response.headers["Expires"] = "0"
     elif request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
-    elif request.url.path.startswith("/static/") and request.query_params.get("v"):
+    elif request.url.path in immutable_asset_versions and immutable_asset_versions[
+        request.url.path
+    ] == request.query_params.get("v"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     elif request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"

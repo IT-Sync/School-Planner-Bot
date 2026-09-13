@@ -35,6 +35,7 @@ jobs:
       - run: pip install -r requirements.lock && pip install -e '.[dev]' -c requirements.lock
       - run: python -m playwright install --with-deps chromium
       - run: bash -n scripts/*.sh
+      - run: bash scripts/deploy-production.sh --help
       - run: ruff check app tests && ruff format --check app tests
       - run: python -m app.migrate
       - run: pytest -q
