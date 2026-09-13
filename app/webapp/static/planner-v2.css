@@ -2499,7 +2499,9 @@ h2 {
 }
 
 .button.danger {
-  background: var(--red)
+  border-color: var(--red);
+  background: var(--red);
+  color: #fff
 }
 
 .focus-card {

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run School Planner PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 Europe/Moscow
+RandomizedDelaySec=20m
+Persistent=true
+Unit=school-planner-backup.service
+
+[Install]
+WantedBy=timers.target
+

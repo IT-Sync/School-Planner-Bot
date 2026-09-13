@@ -1,0 +1,13 @@
+# Install as /etc/school-planner-backup.conf with mode 0600.
+PROJECT_DIR=/opt/pybot/School-Planner-Bot
+PROJECT_NAME=school-planner-bot
+BACKUP_DIR=/opt/pybot/School-Planner-Bot/backups/automatic
+RETENTION_DAYS=14
+
+# rsync destination on a different host. Configure key-based SSH separately.
+# BACKUP_REMOTE=backup@example.net:/srv/backups/school-planner
+# BACKUP_REQUIRE_REMOTE=1
+
+# Optional external monitor ping URL. Do not commit its real value.
+# BACKUP_HEALTHCHECK_URL=https://monitor.example.net/unique-id
+

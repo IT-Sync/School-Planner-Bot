@@ -1,0 +1,14 @@
+[Unit]
+Description=School Planner verified PostgreSQL backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/pybot/School-Planner-Bot
+EnvironmentFile=-/etc/school-planner-backup.conf
+ExecStart=/opt/pybot/School-Planner-Bot/scripts/backup-postgres.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+

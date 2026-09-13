@@ -81,25 +81,30 @@ async def test_web_workflows(width):
             await page.goto(base)
             assert (
                 await page.locator('link[rel="stylesheet"]').get_attribute("href")
-                == "/static/planner-v2.css?v=20260912.1"
+                == "/static/planner-v2.css?v=20260913.1"
             )
             assert (
                 await page.evaluate("getComputedStyle(document.body).backgroundColor")
                 == "rgb(243, 246, 251)"
             )
-            stylesheet = await page.request.get(f"{base}/static/planner-v2.css?v=20260912.1")
+            stylesheet = await page.request.get(f"{base}/static/planner-v2.css?v=20260913.1")
             assert stylesheet.ok
             assert "text/css" in stylesheet.headers["content-type"]
             assert "immutable" in stylesheet.headers["cache-control"]
             legacy_stylesheet = await page.request.get(f"{base}/static/styles.css")
             assert legacy_stylesheet.ok
             assert "must-revalidate" in legacy_stylesheet.headers["cache-control"]
-            assert "planner-v2.css?v=20260912.1" in await legacy_stylesheet.text()
+            assert "planner-v2.css?v=20260913.1" in await legacy_stylesheet.text()
             await page.get_by_role("button", name="Поделиться расписанием").click()
             await page.get_by_role("checkbox", name="Вс").uncheck()
             await page.get_by_role("button", name="Закрыть окно").click()
             await page.get_by_role("heading", name="Закрыть без сохранения изменений?").wait_for()
-            await page.get_by_role("button", name="Закрыть", exact=True).click()
+            close_without_saving = page.get_by_role("button", name="Закрыть", exact=True)
+            assert (
+                await close_without_saving.evaluate("button => getComputedStyle(button).color")
+                == "rgb(255, 255, 255)"
+            )
+            await close_without_saving.click()
             await page.locator("dialog").wait_for(state="hidden")
             await page.get_by_role("button", name="+ Добавить занятие", exact=True).click()
             await page.locator("[name=label]").fill("Математика")
