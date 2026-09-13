@@ -2,6 +2,19 @@
 
 Last updated: 2026-09-13
 
+## Completed and verified (2026-09-13)
+
+- [x] Automate frontend asset fingerprinting.
+  - SHA-256 CSS/JS versions are rendered into the HTML and legacy compatibility shims by `app/webapp/assets.py`; tested in `tests/test_assets.py` and browser scenarios, deployed in v2.1.0.
+- [x] Persist bot FSM state across restarts.
+  - `PostgresStorage` in `app/telegram/fsm_storage.py`, migration `0003_fsm_storage.sql`, configurable seven-day TTL and atomic data updates; persistence, expiry, isolation and concurrent updates are covered in `tests/test_planner.py`.
+- [x] Define and automate operator-triggered production deployment.
+  - `scripts/deploy-production.sh` implements preflight, verified backup/restore rehearsal, migration, health checks and attempted application recovery. Used successfully for v2.1.0; CI does not deploy automatically.
+- [x] Deploy and verify v2.1.0 on production.
+  - Application commit `b6b858c`; migration, health, public assets and unchanged DB container verified; all 12 tracked table counts matched the final backup. Public API still reports 2.1.0 at this audit.
+- [x] Install daily local backups and verify PostgreSQL 16 restore.
+  - Backup timer is active. Both release dumps were also copied off-host manually with matching SHA-256; scheduled remote replication and missing-run alerts remain open below.
+
 ## In progress
 
 Off-host backup replication and missing-run alerting remain active operational work.
@@ -11,12 +24,13 @@ Off-host backup replication and missing-run alerting remain active operational w
 - [ ] Configure the installed backup timer with an off-host rsync destination and external missing-run alert.
   - Relevant docs: `docs/automated-backups.md`; configuration: `/etc/school-planner-backup.conf` on production.
   - Completed 2026-09-13: daily systemd timer, verified local custom-format dump, checksum/count sidecars, and successful PostgreSQL 16 restore drill.
+  - Rechecked on production: `BACKUP_REMOTE` and `BACKUP_HEALTHCHECK_URL` are unset; `BACKUP_REQUIRE_REMOTE` defaults to 0. Manual release copies do not complete this scheduled-backup task.
   - Remaining input: a restricted `user@host:/path` destination and optionally a healthcheck URL. Set `BACKUP_REQUIRE_REMOTE=1` after configuring it.
 
 ## Medium priority
 
 - [ ] Publish the prepared v2.1.0 tag and GitHub Release once write credentials are available.
-  - User pushed main successfully; origin/main verified at `02e7a8b`. Remote tag is absent and the release endpoint returns HTTP 404.
+  - User pushed main successfully; origin/main verified at `c61778e` during this audit. Remote tag is absent and the release endpoint returns HTTP 404.
   - Application commit: `b6b858c`; annotated local and production tag: `v2.1.0`.
   - Release notes: `docs/releases/v2.1.0.md`.
   - Production rollout is complete: asset hashes, durable FSM migration, application health/readiness, and package/API version verified.

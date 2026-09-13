@@ -20,7 +20,7 @@ Implemented:
 - Integration and real-browser tests in GitHub Actions.
 - Daily local PostgreSQL backups with archive/checksum/count validation and an isolated PostgreSQL 16 restore rehearsal.
 
-Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes are deployed to production at application commit `b6b858c` (tag `v2.1.0`); GitHub main includes the release and deployment commits (verified through `02e7a8b`); the v2.1.0 tag and GitHub Release are not yet published. Planned and unfinished work is authoritative in `TODO.md`.
+Release v2.1.0 implements content-based frontend asset versions, durable PostgreSQL FSM storage, and an operator deployment script. These changes are deployed to production at application commit `b6b858c` (tag `v2.1.0`); GitHub main includes the release and deployment commits (verified through `c61778e`); the v2.1.0 tag and GitHub Release are not yet published. Planned and unfinished work is authoritative in `TODO.md`.
 
 ## Technology stack
 
@@ -65,7 +65,7 @@ docs/              Operator runbooks, development notes and UI screenshots
 
 ## Work in progress
 
-Release v2.1.0 production rollout is complete; GitHub main includes the release and deployment commits (verified through `02e7a8b`); the v2.1.0 tag and GitHub Release are not yet published. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
+Release v2.1.0 production rollout is complete; GitHub main includes the release and deployment commits (verified through `c61778e`); the v2.1.0 tag and GitHub Release are not yet published. Automated local backups and restore verification are deployed. Off-host replication/alerting still needs a destination. See `TODO.md`.
 
 ## Important technical decisions
 
@@ -158,6 +158,10 @@ Release v2.1.0 production rollout is complete; GitHub main includes the release 
 - Reminder claim-before-send semantics without an explicit duplicate/delivery tradeoff decision.
 - Production Compose project name, ignored database override, PostgreSQL 16 external volume, or retained PostgreSQL 15 rollback artifacts.
 - Public asset names/version query and compatibility shims while older Telegram clients may cache HTML.
+
+## Latest TODO audit
+
+On 2026-09-13, confirmed asset fingerprinting, durable FSM, operator deployment, v2.1.0 rollout, and local backups/restore verification as completed in `TODO.md`. Rechecked production API version 2.1.0 and active backup timer; scheduled remote backup and healthcheck remain unset. Code still contains the fallback URL bug and SQLAlchemy dependency; attachment retention, reminder failure/DST tests, service consolidation and infrastructure documentation/alerts remain open. GitHub main is at `c61778e`; remote v2.1.0 tag is absent and the release lookup returns HTTP 404.
 
 ## Memory maintenance notes
 
